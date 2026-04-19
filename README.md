@@ -11,15 +11,17 @@ ML-based forex trading bot with technical feature engineering and model training
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
   - [Configuration](#configuration)
-  - [Training the ML Model](#training-the-ml-model)
-  - [Running the Trading Bot](#running-the-trading-bot)
-  - [CLI Arguments & Configuration Options](#cli-arguments--configuration-options)
+  - [Model Training](#model-training)
+  - [Using a Trained Model](#using-a-trained-model)
+  - [Running Tests](#running-tests)
+- [Project Structure](#project-structure)
+- [License](#license)
 
 ---
 
 ## Overview
 
-Kael Trading Bot ingests forex pair data, engineers technical features (indicators, temporal features, targets), trains ML models (XGBoost, LightGBM, scikit-learn), evaluates them with classification and trading-oriented metrics, and persists trained models for use in a live trading workflow.
+Kael Trading Bot ingests forex pair data via Yahoo Finance, engineers technical features (SMA, EMA, RSI, MACD, Bollinger Bands, ATR, rolling stats, temporal features, and directional targets), trains ML classification models (XGBoost, LightGBM, Random Forest, Logistic Regression), evaluates them with both classification and trading-oriented metrics, and persists trained models for downstream use.
 
 ---
 
@@ -27,14 +29,14 @@ Kael Trading Bot ingests forex pair data, engineers technical features (indicato
 
 ### Prerequisites
 
-| Requirement        | Details                                                    |
-| ------------------ | ---------------------------------------------------------- |
-| **Python**         | 3.10 or higher                                             |
-| **Operating system** | Linux, macOS, or Windows (WSL recommended on Windows)     |
-| **Data source**    | Internet access to [Yahoo Finance](https://finance.yahoo.com) via the `yfinance` library — no API key required |
-| **External tools** | Git (for cloning the repository)                           |
+| Requirement          | Details                                                        |
+| -------------------- | -------------------------------------------------------------- |
+| **Python**           | 3.11 or higher (see `pyproject.toml`)                          |
+| **Operating system** | Linux, macOS, or Windows (WSL recommended on Windows)          |
+| **Data source**      | Internet access to [Yahoo Finance](https://finance.yahoo.com) via the `yfinance` library — no API key required |
+| **External tools**   | Git (for cloning the repository)                               |
 
-> **Note:** Yahoo Finance provides free forex data without authentication. If you switch to a paid data provider in the future (e.g., Alpha Vantage, OANDA), you will need an API key and must update the data ingestion configuration accordingly.
+> **Note:** Yahoo Finance provides free forex data without authentication. No API key is needed for the default data ingestion pipeline.
 
 ### Installation
 
@@ -54,7 +56,7 @@ Kael Trading Bot ingests forex pair data, engineers technical features (indicato
    .venv\Scripts\activate       # Windows
 
    # Or using conda
-   conda create -n kael-bot python=3.10
+   conda create -n kael-bot python=3.11
    conda activate kael-bot
    ```
 
@@ -70,6 +72,7 @@ Kael Trading Bot ingests forex pair data, engineers technical features (indicato
    - `scikit-learn`, `xgboost`, `lightgbm` — ML model training
    - `yfinance` — forex data ingestion from Yahoo Finance
    - `ta` — technical analysis indicators
+   - `pyarrow` — Parquet I/O for data caching
    - `joblib` — model persistence
    - `matplotlib`, `seaborn` — visualisation
    - `python-dotenv` — environment variable loading
@@ -77,118 +80,173 @@ Kael Trading Bot ingests forex pair data, engineers technical features (indicato
 4. **(Optional) Install the package in editable mode for development:**
 
    ```bash
-   pip install -e .
+   pip install -e ".[dev]"
    ```
+
+   This also installs dev dependencies (`pytest`, `pytest-cov`, `ruff`, `mypy`).
 
 ### Configuration
 
-The project uses a configuration file (`.yaml`) and optionally `.env` for environment variables.
+The project is configured through **Python dataclasses** and **environment variables**. There is no YAML config file — all settings are set programmatically.
 
-1. **Copy the example configuration** (if provided) or create one:
+#### Environment Variables
 
-   The main config file is typically located at the project root. It controls:
-   - Forex pairs and date ranges for data ingestion
-   - Feature engineering parameters (indicator windows, target horizons)
-   - Model hyperparameters and type selection
-   - Train/validation/test split ratios
-   - Output directories for models and logs
+| Variable            | Description                              | Default                |
+| ------------------- | ---------------------------------------- | ---------------------- |
+| `KAEL_START_DATE`   | Data start date (ISO 8601, inclusive)    | `2020-01-01`           |
+| `KAEL_END_DATE`     | Data end date (ISO 8601, inclusive)      | `2025-01-01`           |
+| `KAEL_INTERVAL`     | Data frequency (`1d`, `1h`, etc.)        | `1d`                   |
+| `KAEL_CACHE_DIR`    | Directory for cached Parquet data files   | `.cache/forex_data`    |
 
-   ```yaml
-   # Example configuration keys (refer to the actual config file for the full schema)
-   data:
-     pairs: ["EURUSD=X"]
-     start_date: "2020-01-01"
-     end_date: "2024-01-01"
-   features:
-     # Feature engineering settings
-   training:
-     model_type: "xgboost"   # Options: xgboost, lightgbm, random_forest
-   ```
+These are read by `IngestionConfig` (in `src/kael_trading_bot/config.py`). Set them in your shell or a `.env` file loaded with `python-dotenv`.
 
-2. **(Optional) Create a `.env` file** for sensitive or environment-specific settings:
+#### Key Configuration Classes
 
-   ```bash
-   cp .env.example .env
-   ```
+| Class             | Module / File                                              | Purpose                                        |
+| ----------------- | ---------------------------------------------------------- | ---------------------------------------------- |
+| `IngestionConfig` | `kael_trading_bot.config` (or `src.kael_trading_bot.config`) | Forex pairs, date ranges, interval, cache dir  |
+| `FeatureConfig`   | `kael_trading_bot.features.pipeline`                        | Indicator windows, target horizons, NaN policy |
+| `PipelineConfig`  | `src.kael_trading_bot.training.pipeline`                    | Model type, split ratios, CV, persistence      |
 
-   Edit `.env` to set any required environment variables. At minimum this may include:
-   - `PYTHONPATH` — ensure the `src` directory is on the Python path
-   - Any API keys if you switch from Yahoo Finance to a paid provider
+Example — override defaults programmatically:
 
-### Training the ML Model
+```python
+from kael_trading_bot.config import IngestionConfig
+from kael_trading_bot.features.pipeline import FeatureConfig
+from src.kael_trading_bot.training.pipeline import PipelineConfig
 
-1. **Ensure your configuration file** specifies the forex pairs, date range, and model type you want to train.
+ingestion_cfg = IngestionConfig(
+    pairs=("EURUSD=X", "GBPUSD=X"),
+    start_date="2022-01-01",
+    end_date="2024-12-31",
+)
 
-2. **Run the training pipeline:**
+feature_cfg = FeatureConfig(
+    sma_periods=(10, 20, 50),
+    rsi_period=14,
+    target_horizons=[1, 5],
+)
 
-   ```bash
-   python -m src.kael_trading_bot.training.pipeline --config config.yaml
-   ```
+pipeline_cfg = PipelineConfig(
+    model_type="xgboost",
+    model_name="eurusd_xgboost",
+    val_ratio=0.15,
+    test_ratio=0.15,
+    cross_validate=True,
+    n_cv_splits=5,
+)
+```
 
-   This executes the full end-to-end pipeline:
-   - **Data ingestion** — fetches forex OHLCV data via Yahoo Finance and caches it locally as Parquet
-   - **Feature engineering** — computes technical indicators (SMA, EMA, RSI, MACD, Bollinger Bands, etc.), temporal features, and target labels using `FeatureConfig`
-   - **Time-aware splitting** — splits data into train, validation, and test sets chronologically (no future leakage)
-   - **Model training** — trains the selected model (XGBoost, LightGBM, or Random Forest) using the registry in `training/models`
-   - **Evaluation** — computes classification metrics (accuracy, precision, recall, F1, ROC-AUC) and trading metrics (hit rate, avg return per trade, Sharpe ratio, max drawdown) on validation and test sets
-   - **Persistence** — saves the trained model along with metadata (hyperparameters, metrics, timestamp) via `joblib`
+### Model Training
 
-3. **Trained model output:**
+There is no CLI entry point — the training pipeline is used as a **Python API**. Create a training script (or run in a notebook/Jupyter session):
 
-   Trained models are saved to the configured output directory (default: `models/`). Each saved model includes:
-   - The serialised model file (`.joblib` or `.pkl`)
-   - A metadata JSON file with training configuration and evaluation results
+```python
+import numpy as np
+from kael_trading_bot.config import IngestionConfig
+from kael_trading_bot.ingestion import ForexDataFetcher
+from kael_trading_bot.features.pipeline import build_feature_matrix, FeatureConfig
+from src.kael_trading_bot.training.pipeline import PipelineConfig, TrainingPipeline
 
-4. **Training logs:**
+# 1. Fetch data
+ingestion_cfg = IngestionConfig(pairs=("EURUSD=X",))
+fetcher = ForexDataFetcher(ingestion_cfg)
+df = fetcher.get("EURUSD=X")
 
-   Structured training logs are written to the configured log directory, recording each training run's parameters and results for reproducibility.
+# 2. Build features
+feature_cfg = FeatureConfig()
+features_df = build_feature_matrix(df, config=feature_cfg)
 
-### Running the Trading Bot
+# 3. Prepare X, y
+target_col = "target_direction_1"  # 1-period ahead directional target
+feature_cols = [c for c in features_df.columns if c.startswith(("sma_", "ema_", "rsi_", "macd_", "bb_", "atr_", "rolling_", "hour_", "dayofweek_"))]
+X = features_df[feature_cols].values
+y = features_df[target_col].values
 
-After training and saving a model, you can run the bot to generate trading signals on live or latest data:
+# 4. Train
+pipeline_cfg = PipelineConfig(
+    model_type="xgboost",
+    model_name="eurusd_xgboost",
+)
+pipeline = TrainingPipeline(pipeline_cfg)
+result = pipeline.run(X, y, feature_names=feature_cols)
 
-```bash
-python -m src.kael_trading_bot.bot --config config.yaml --model models/<model_name>.joblib
+print(f"Test F1: {result.best_test_f1:.4f}")
+print(f"Model saved to: {result.saved_path}")
+```
+
+#### What the pipeline does
+
+1. **Data ingestion** — fetches forex OHLCV data via Yahoo Finance and caches it locally as Parquet files in `.cache/forex_data/`
+2. **Feature engineering** — computes technical indicators (SMA, EMA, RSI, MACD, Bollinger Bands, ATR), rolling window statistics, time-based features, and target labels (future returns and directional signals)
+3. **Time-aware splitting** — splits data into train (70%), validation (15%), and test (15%) sets chronologically to prevent future leakage
+4. **(Optional) Cross-validation** — performs time-series cross-validation with configurable number of folds
+5. **Model training** — trains the selected model type with default or custom hyperparameters
+6. **Evaluation** — computes classification metrics (accuracy, precision, recall, F1, ROC-AUC) and trading metrics (hit rate, avg return per trade, Sharpe ratio, max drawdown)
+7. **Persistence** — saves the trained model as `model.joblib` with a `metadata.json` sidecar
+8. **Logging** — appends a structured JSON-lines record to `logs/training_runs.jsonl`
+
+#### Trained model output
+
+Models are saved to the `models/` directory by default, organised as:
+
+```
+models/
+└── <model_name>/
+    └── <model_version>/
+        ├── model.joblib       # Serialised model binary
+        └── metadata.json      # Training config, metrics, timestamp
+```
+
+The model version defaults to a timestamp string like `v20240115T103000`. Use `ModelPersistence.list_models()` and `ModelPersistence.list_versions(name)` to discover saved models.
+
+#### Available Model Types
+
+| Model Type            | Enum Value              | Key Hyperparameters (defaults)                          |
+| --------------------- | ----------------------- | ------------------------------------------------------- |
+| XGBoost               | `"xgboost"`             | `n_estimators=200`, `max_depth=6`, `learning_rate=0.05` |
+| LightGBM              | `"lightgbm"`            | `n_estimators=200`, `max_depth=6`, `learning_rate=0.05` |
+| Random Forest         | `"random_forest"`       | `n_estimators=200`, `max_depth=10`                      |
+| Logistic Regression   | `"logistic_regression"` | `max_iter=1000`, `C=1.0`                                |
+
+### Using a Trained Model
+
+Load a previously trained model and its metadata using `ModelPersistence`:
+
+```python
+from src.kael_trading_bot.training.persistence import ModelPersistence
+
+persistence = ModelPersistence(directory="models")
+model, metadata = persistence.load(
+    model_name="eurusd_xgboost",
+    model_version="v20240115T103000",  # or use list_versions() to find one
+)
+
+print(f"Model type: {metadata.model_type}")
+print(f"Trained at: {metadata.trained_at}")
+print(f"Test metrics: {metadata.metrics.get('test')}")
+
+# Generate predictions
+predictions = model.predict(X_new)
+probabilities = model.predict_proba(X_new)[:, 1]  # probability of positive class
 ```
 
 > ⚠️ **Disclaimer:** This bot is for educational and research purposes only. Forex trading involves significant risk. Always use a demo/paper trading account and never risk capital you cannot afford to lose.
 
-#### What the bot does
+### Running Tests
 
-1. Loads the trained model and its associated metadata
-2. Fetches the latest forex data for the configured pairs
-3. Engineers the same features used during training
-4. Generates directional signals (long/short/neutral) using the model predictions
-5. Outputs signals with confidence scores for downstream execution
+The project uses `pytest` for testing. Tests are located in the `tests/` directory:
 
-### CLI Arguments & Configuration Options
+```bash
+# Run all tests
+pytest
 
-| Argument / Option | Description                                      | Example                            |
-| ----------------- | ------------------------------------------------ | ---------------------------------- |
-| `--config`        | Path to the YAML configuration file              | `--config config.yaml`             |
-| `--model`         | Path to a trained model file (`.joblib`)         | `--model models/xgb_eurusd.joblib` |
-| `--pairs`         | Forex pairs to process (overrides config)        | `--pairs EURUSD=X GBPUSD=X`        |
-| `--start-date`    | Data start date (YYYY-MM-DD)                     | `--start-date 2023-01-01`          |
-| `--end-date`      | Data end date (YYYY-MM-DD)                       | `--end-date 2024-01-01`            |
-| `--model-type`    | Model type to train (overrides config)           | `--model-type lightgbm`            |
-| `--output-dir`    | Directory for output files                       | `--output-dir ./results`           |
-| `--log-level`     | Logging verbosity (`DEBUG`, `INFO`, `WARNING`)   | `--log-level DEBUG`                |
+# Run tests for a specific module
+pytest tests/test_training_pipeline.py
 
-#### Available Model Types
-
-| Model Type         | Key in Config | Description                                  |
-| ------------------ | ------------- | -------------------------------------------- |
-| XGBoost            | `xgboost`     | Gradient boosted trees (default)             |
-| LightGBM           | `lightgbm`    | Light gradient boosting, fast training       |
-| Random Forest      | `random_forest` | Ensemble of decision trees (scikit-learn) |
-
-#### Environment Variables
-
-| Variable      | Description                                           | Default       |
-| ------------- | ----------------------------------------------------- | ------------- |
-| `PYTHONPATH`  | Should include `src/` for package imports             | —             |
-| `KAEL_CONFIG` | Path to the default configuration file                | `config.yaml` |
-| `KAEL_LOG_LEVEL` | Override log level without CLI flag                | `INFO`        |
+# Run with coverage report
+pytest --cov=src/kael_trading_bot
+```
 
 ---
 
@@ -197,11 +255,27 @@ python -m src.kael_trading_bot.bot --config config.yaml --model models/<model_na
 ```
 src/kael_trading_bot/
 ├── __init__.py
-├── config/          # Project configuration loading
-├── features/        # Technical feature engineering pipeline
-├── ingestion/       # Forex data ingestion (Yahoo Finance)
-├── training/        # ML model training, evaluation, persistence
-└── bot/             # Trading bot execution and signal generation
+├── config.py           # IngestionConfig (forex pairs, dates, caching)
+├── ingestion.py        # ForexDataFetcher (Yahoo Finance OHLCV)
+├── features/           # Technical feature engineering
+│   ├── __init__.py
+│   ├── pipeline.py     # build_feature_matrix, FeatureConfig
+│   ├── indicators.py   # SMA, EMA, RSI, MACD, BB, ATR
+│   ├── temporal.py     # Time-based features, rolling stats
+│   └── targets.py      # Future returns, directional targets
+└── training/           # ML model training pipeline
+    ├── __init__.py
+    ├── pipeline.py     # TrainingPipeline, PipelineConfig
+    ├── models.py       # ModelRegistry, ModelType (XGBoost, LightGBM, RF, LR)
+    ├── splitting.py    # TimeSeriesSplitter (chronological split)
+    ├── evaluation.py   # Classification + trading metrics
+    ├── persistence.py  # ModelPersistence (save/load with metadata)
+    └── logging.py      # TrainingLogger (JSON-lines run history)
+
+tests/                  # Unit tests
+models/                 # Saved trained models (generated at runtime)
+logs/                   # Training run logs (generated at runtime)
+.cache/                 # Cached forex data Parquet files (generated at runtime)
 ```
 
 ---
