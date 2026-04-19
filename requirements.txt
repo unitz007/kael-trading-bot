@@ -1,3 +1,6 @@
+# Parquet I/O (needed by ingestion cache)
+pyarrow>=14.0.0
+
 # Core data handling
 numpy==1.26.4
 pandas==2.2.1
