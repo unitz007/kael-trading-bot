@@ -1,6 +1,6 @@
 """REST API application factory.
 
-Creates and configures the Flask application that exposes bot
+Creates and configures the FastAPI application that exposes bot
 capabilities (forex pair data, model training, predictions) as HTTP
 endpoints.
 
@@ -8,9 +8,9 @@ Usage
 -----
 ::
 
+    import uvicorn
     from kael_trading_bot.api import create_app
-    app = create_app()
-    app.run(host="0.0.0.0", port=5000)
+    uvicorn.run(create_app(), host="0.0.0.0", port=5000)
 
 Or via CLI::
 
@@ -25,7 +25,9 @@ from datetime import datetime, timezone
 from typing import Any
 
 import numpy as np
-from flask import Flask, Response, jsonify, request
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from kael_trading_bot.config import (
     DEFAULT_FOREX_PAIRS,
@@ -66,73 +68,53 @@ def _is_supported_pair(pair: str) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def create_app() -> Flask:
-    """Create and configure the Flask application.
+def create_app() -> FastAPI:
+    """Create and configure the FastAPI application.
 
     Returns
     -------
-    Flask
+    FastAPI
         The configured application ready to serve.
     """
-    app = Flask(__name__)
+    app = FastAPI(
+        title="Kael Trading Bot API",
+        description="REST API for forex trading bot — data, training, predictions",
+        version="0.1.0",
+    )
 
     # Allow cross-origin requests so a web frontend on a different port
     # can reach the API during development.
-    @app.after_request
-    def _add_cors_headers(response: Response) -> Response:
-        response.headers["Access-Control-Allow-Origin"] = "*"
-        response.headers["Access-Control-Allow-Methods"] = (
-            "GET, POST, OPTIONS"
-        )
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
-        return response
-
-    # Handle preflight OPTIONS requests
-    @app.before_request
-    def _handle_options():
-        if request.method == "OPTIONS":
-            response = Response(status=204)
-            response.headers["Access-Control-Allow-Origin"] = "*"
-            response.headers["Access-Control-Allow-Methods"] = (
-                "GET, POST, OPTIONS"
-            )
-            response.headers["Access-Control-Allow-Headers"] = "Content-Type"
-            return response
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type"],
+    )
 
     # ------------------------------------------------------------------
     # Endpoints
     # ------------------------------------------------------------------
 
-    @app.route("/api/v1/pairs", methods=["GET"])
-    def list_pairs() -> tuple[Response, int]:
-        """Return the list of available/supported forex pairs.
+    @app.get("/api/v1/pairs")
+    def list_pairs() -> dict[str, Any]:
+        """Return the list of available/supported forex pairs."""
+        return {
+            "pairs": DEFAULT_FOREX_PAIRS,
+            "count": len(DEFAULT_FOREX_PAIRS),
+        }
 
-        Acceptance Criteria: #2 — GET endpoint returns list of pairs.
-        """
-        return jsonify(
-            {
-                "pairs": DEFAULT_FOREX_PAIRS,
-                "count": len(DEFAULT_FOREX_PAIRS),
-            }
-        ), 200
-
-    @app.route("/api/v1/pairs/<pair>/history", methods=["GET"])
-    def get_history(pair: str) -> tuple[Response, int]:
-        """Return historical OHLCV price data for *pair*.
-
-        Acceptance Criteria: #3, #7, #8, #9.
-        """
+    @app.get("/api/v1/pairs/{pair}/history")
+    def get_history(pair: str) -> JSONResponse | dict[str, Any]:
+        """Return historical OHLCV price data for *pair*."""
         ticker = _normalise_ticker(pair)
 
         if not _is_supported_pair(ticker):
-            return (
-                jsonify(
-                    {
-                        "error": f"Unsupported forex pair: {ticker}",
-                        "supported_pairs": DEFAULT_FOREX_PAIRS,
-                    }
-                ),
-                404,
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "error": f"Unsupported forex pair: {ticker}",
+                    "supported_pairs": DEFAULT_FOREX_PAIRS,
+                },
             )
 
         try:
@@ -140,15 +122,15 @@ def create_app() -> Flask:
             fetcher = ForexDataFetcher(ingestion_cfg)
             df = fetcher.get(ticker)
         except ValueError as exc:
-            return (
-                jsonify({"error": str(exc)}),
-                404,
+            return JSONResponse(
+                status_code=404,
+                content={"error": str(exc)},
             )
         except Exception as exc:
             logger.exception("Failed to fetch history for %s", ticker)
-            return (
-                jsonify({"error": f"Internal error fetching data: {exc}"}),
-                500,
+            return JSONResponse(
+                status_code=500,
+                content={"error": f"Internal error fetching data: {exc}"},
             )
 
         # Convert DataFrame to list of records with ISO date strings
@@ -156,34 +138,24 @@ def create_app() -> Flask:
         records["Date"] = records["Date"].astype(str)
         data = records.to_dict(orient="records")
 
-        return (
-            jsonify(
-                {
-                    "pair": ticker,
-                    "rows": len(data),
-                    "data": data,
-                }
-            ),
-            200,
-        )
+        return {
+            "pair": ticker,
+            "rows": len(data),
+            "data": data,
+        }
 
-    @app.route("/api/v1/pairs/<pair>/train", methods=["POST"])
-    def train_model(pair: str) -> tuple[Response, int]:
-        """Trigger model training for *pair*.
-
-        Acceptance Criteria: #4, #7, #8, #9.
-        """
+    @app.post("/api/v1/pairs/{pair}/train")
+    def train_model(pair: str) -> JSONResponse | dict[str, Any]:
+        """Trigger model training for *pair*."""
         ticker = _normalise_ticker(pair)
 
         if not _is_supported_pair(ticker):
-            return (
-                jsonify(
-                    {
-                        "error": f"Unsupported forex pair: {ticker}",
-                        "supported_pairs": DEFAULT_FOREX_PAIRS,
-                    }
-                ),
-                404,
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "error": f"Unsupported forex pair: {ticker}",
+                    "supported_pairs": DEFAULT_FOREX_PAIRS,
+                },
             )
 
         start_time = time.time()
@@ -201,16 +173,14 @@ def create_app() -> Flask:
             # 3. Prepare arrays
             target_col = "target_direction_1"
             if target_col not in feature_df.columns:
-                return (
-                    jsonify(
-                        {
-                            "error": (
-                                f"Target column '{target_col}' not found after "
-                                f"feature engineering."
-                            ),
-                        }
-                    ),
-                    400,
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "error": (
+                            f"Target column '{target_col}' not found after "
+                            f"feature engineering."
+                        ),
+                    },
                 )
 
             exclude_cols = {target_col}
@@ -258,26 +228,23 @@ def create_app() -> Flask:
             if result.saved_path:
                 response_data["saved_path"] = result.saved_path
 
-            return jsonify(response_data), 200
+            return response_data
 
         except ValueError as exc:
-            return (
-                jsonify({"error": f"Training failed: {exc}"}),
-                400,
+            return JSONResponse(
+                status_code=400,
+                content={"error": f"Training failed: {exc}"},
             )
         except Exception as exc:
             logger.exception("Training failed for %s", ticker)
-            return (
-                jsonify({"error": f"Internal error during training: {exc}"}),
-                500,
+            return JSONResponse(
+                status_code=500,
+                content={"error": f"Internal error during training: {exc}"},
             )
 
-    @app.route("/api/v1/pairs/<pair>/predict", methods=["GET"])
-    def get_predictions(pair: str) -> tuple[Response, int]:
-        """Return prediction results for *pair* using the latest trained model.
-
-        Acceptance Criteria: #5, #7, #8, #9.
-        """
+    @app.get("/api/v1/pairs/{pair}/predict")
+    def get_predictions(pair: str) -> JSONResponse | dict[str, Any]:
+        """Return prediction results for *pair* using the latest trained model."""
         ticker = _normalise_ticker(pair)
         model_name = _pair_to_model_name(ticker)
         persistence = ModelPersistence()
@@ -285,23 +252,21 @@ def create_app() -> Flask:
         try:
             versions = persistence.list_versions(model_name)
             if not versions:
-                return (
-                    jsonify(
-                        {
-                            "error": (
-                                f"No trained model found for pair '{ticker}'. "
-                                f"Train a model first via POST /api/v1/pairs/{pair}/train"
-                            ),
-                        }
-                    ),
-                    404,
+                return JSONResponse(
+                    status_code=404,
+                    content={
+                        "error": (
+                            f"No trained model found for pair '{ticker}'. "
+                            f"Train a model first via POST /api/v1/pairs/{pair}/train"
+                        ),
+                    },
                 )
             version = versions[-1]
         except Exception as exc:
             logger.exception("Error listing model versions for %s", model_name)
-            return (
-                jsonify({"error": f"Internal error listing models: {exc}"}),
-                500,
+            return JSONResponse(
+                status_code=500,
+                content={"error": f"Internal error listing models: {exc}"},
             )
 
         try:
@@ -309,16 +274,14 @@ def create_app() -> Flask:
             feature_names = metadata.feature_names
 
             if not feature_names:
-                return (
-                    jsonify(
-                        {
-                            "error": (
-                                f"Model '{model_name}' has no feature names "
-                                f"recorded. Cannot generate predictions."
-                            ),
-                        }
-                    ),
-                    400,
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "error": (
+                            f"Model '{model_name}' has no feature names "
+                            f"recorded. Cannot generate predictions."
+                        ),
+                    },
                 )
 
             # Ingest & engineer features
@@ -330,16 +293,14 @@ def create_app() -> Flask:
 
             missing_features = [f for f in feature_names if f not in feature_df.columns]
             if missing_features:
-                return (
-                    jsonify(
-                        {
-                            "error": (
-                                f"Missing features for prediction: {missing_features}. "
-                                f"Model was trained on a different feature set."
-                            ),
-                        }
-                    ),
-                    400,
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "error": (
+                            f"Missing features for prediction: {missing_features}. "
+                            f"Model was trained on a different feature set."
+                        ),
+                    },
                 )
 
             X = feature_df[feature_names].values.astype(np.float64)
@@ -370,49 +331,41 @@ def create_app() -> Flask:
             up_count = int(sum(1 for p in y_pred if p == 1))
             down_count = len(y_pred) - up_count
 
-            return (
-                jsonify(
-                    {
-                        "pair": ticker,
-                        "model_name": model_name,
-                        "model_version": version,
-                        "trained_at": metadata.trained_at,
-                        "total_predictions": len(predictions),
-                        "up_count": up_count,
-                        "down_count": down_count,
-                        "predictions": predictions,
-                    }
-                ),
-                200,
-            )
+            return {
+                "pair": ticker,
+                "model_name": model_name,
+                "model_version": version,
+                "trained_at": metadata.trained_at,
+                "total_predictions": len(predictions),
+                "up_count": up_count,
+                "down_count": down_count,
+                "predictions": predictions,
+            }
 
         except ValueError as exc:
-            return (
-                jsonify({"error": str(exc)}),
-                404,
+            return JSONResponse(
+                status_code=404,
+                content={"error": str(exc)},
             )
         except Exception as exc:
             logger.exception("Prediction failed for %s", ticker)
-            return (
-                jsonify({"error": f"Internal error during prediction: {exc}"}),
-                500,
+            return JSONResponse(
+                status_code=500,
+                content={"error": f"Internal error during prediction: {exc}"},
             )
 
-    @app.route("/api/v1/models", methods=["GET"])
-    def list_models() -> tuple[Response, int]:
-        """Return a list of trained models with their metadata.
-
-        Acceptance Criteria: #6, #9.
-        """
+    @app.get("/api/v1/models")
+    def list_models() -> JSONResponse | dict[str, Any]:
+        """Return a list of trained models with their metadata."""
         persistence = ModelPersistence()
 
         try:
             model_names = persistence.list_models()
         except Exception as exc:
             logger.exception("Error listing models")
-            return (
-                jsonify({"error": f"Internal error listing models: {exc}"}),
-                500,
+            return JSONResponse(
+                status_code=500,
+                content={"error": f"Internal error listing models: {exc}"},
             )
 
         models_info: list[dict[str, Any]] = []
@@ -441,14 +394,9 @@ def create_app() -> Flask:
                         version,
                     )
 
-        return (
-            jsonify(
-                {
-                    "models": models_info,
-                    "count": len(models_info),
-                }
-            ),
-            200,
-        )
+        return {
+            "models": models_info,
+            "count": len(models_info),
+        }
 
     return app

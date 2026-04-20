@@ -1,7 +1,7 @@
 """REST API package for the Kael Trading Bot.
 
 Exposes bot capabilities (forex data, model training, predictions)
-as HTTP endpoints via Flask.
+as HTTP endpoints via FastAPI.
 """
 
 from kael_trading_bot.api.app import create_app  # noqa: F401

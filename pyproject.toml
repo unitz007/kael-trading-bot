@@ -21,10 +21,7 @@ python_files = ["test_*.py"]
 python_functions = ["test_*"]
 addopts = "-v"
 
-[project.optional-dependencies]web = [
-    "flask>=3.0.0",
-]
-
+[project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",
     "pytest-cov>=4.1.0",
