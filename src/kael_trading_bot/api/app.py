@@ -171,15 +171,18 @@ def create_app() -> FastAPI:
             feature_df = build_feature_matrix(raw_df, config=FeatureConfig())
 
             # 3. Prepare arrays
-            target_col = "target_direction_1"
-            if target_col not in feature_df.columns:
+            target_col_candidates = ("target_dir_1", "target_direction_1")
+            target_col = next((c for c in target_col_candidates if c in feature_df.columns), None)
+            if target_col is None:
+                available_targets = sorted(c for c in feature_df.columns if c.startswith("target_"))
                 return JSONResponse(
                     status_code=400,
                     content={
                         "error": (
-                            f"Target column '{target_col}' not found after "
-                            f"feature engineering."
+                            f"Target column not found after feature engineering. "
+                            f"Tried {list(target_col_candidates)}."
                         ),
+                        "available_target_columns": available_targets,
                     },
                 )
 
@@ -308,15 +311,49 @@ def create_app() -> FastAPI:
 
             try:
                 y_proba = model.predict_proba(X)
-                if y_proba.ndim == 2 and y_proba.shape[1] == 2:
-                    prob_up = y_proba[:, 1].tolist()
-                else:
-                    prob_up = None
+                prob_up = None
+                if y_proba.ndim == 2:
+                    label_values = getattr(metadata, "label_values", None)
+                    if label_values:
+                        try:
+                            up_idx = list(label_values).index(1)
+                            if up_idx < y_proba.shape[1]:
+                                prob_up = y_proba[:, up_idx].tolist()
+                        except ValueError:
+                            prob_up = None
+                    elif y_proba.shape[1] == 2:
+                        prob_up = y_proba[:, 1].tolist()
             except Exception:
                 prob_up = None
 
             dates = [str(d) for d in feature_df.index]
-            label_map = {0.0: "DOWN", 1.0: "UP", 0: "DOWN", 1: "UP"}
+            label_values = getattr(metadata, "label_values", None)
+            if label_values:
+                label_map = {float(v): str(v) for v in label_values}
+                label_map.update({-1.0: "DOWN", 0.0: "FLAT", 1.0: "UP", -1: "DOWN", 0: "FLAT", 1: "UP"})
+            else:
+                # Backward-compatible fallback for older models without metadata.label_values.
+                label_map = {
+                    -1.0: "DOWN",
+                    0.0: "FLAT",
+                    1.0: "UP",
+                    -1: "DOWN",
+                    0: "FLAT",
+                    1: "UP",
+                    0.0: "DOWN",
+                    1.0: "UP",
+                    2.0: "UP",
+                    0: "DOWN",
+                    1: "FLAT",
+                    2: "UP",
+                }
+
+            # Decode model outputs if they look like encoded class indices.
+            if label_values:
+                y_pred_arr = np.asarray(y_pred)
+                if y_pred_arr.ndim == 1 and np.issubdtype(y_pred_arr.dtype, np.integer):
+                    if y_pred_arr.size > 0 and y_pred_arr.min() >= 0 and y_pred_arr.max() < len(label_values):
+                        y_pred = np.asarray(label_values, dtype=float)[y_pred_arr]
 
             predictions = []
             for i in range(len(dates)):
@@ -328,8 +365,10 @@ def create_app() -> FastAPI:
                     pred["probability_up"] = round(float(prob_up[i]), 4)
                 predictions.append(pred)
 
-            up_count = int(sum(1 for p in y_pred if p == 1))
-            down_count = len(y_pred) - up_count
+            y_pred_list = list(y_pred)
+            up_count = int(sum(1 for p in y_pred_list if float(p) == 1.0))
+            down_count = int(sum(1 for p in y_pred_list if float(p) == -1.0))
+            flat_count = int(sum(1 for p in y_pred_list if float(p) == 0.0))
 
             return {
                 "pair": ticker,
@@ -339,6 +378,7 @@ def create_app() -> FastAPI:
                 "total_predictions": len(predictions),
                 "up_count": up_count,
                 "down_count": down_count,
+                "flat_count": flat_count,
                 "predictions": predictions,
             }
 

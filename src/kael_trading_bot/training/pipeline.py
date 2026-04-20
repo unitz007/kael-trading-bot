@@ -285,6 +285,7 @@ class TrainingPipeline:
                     "test": test_eval.to_dict() if test_eval else None,
                 },
                 feature_names=feature_names,
+                label_values=fit_label_values.tolist(),
                 trained_at=datetime.now(timezone.utc).isoformat(),
             )
 

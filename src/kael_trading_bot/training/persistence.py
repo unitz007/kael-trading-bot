@@ -27,6 +27,7 @@ class ModelMetadata:
     params: dict[str, Any] = field(default_factory=dict)
     metrics: dict[str, Any] = field(default_factory=dict)
     feature_names: list[str] | None = None
+    label_values: list[Any] | None = None
     trained_at: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
