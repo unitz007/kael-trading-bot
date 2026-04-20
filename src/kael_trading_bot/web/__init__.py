@@ -1,0 +1,24 @@
+"""Flask web application for the Kael Trading Bot.
+
+Creates and configures the Flask app with blueprint registration.
+Run with: ``python -m kael_trading_bot.web``
+"""
+
+from __future__ import annotations
+
+from flask import Flask
+
+from kael_trading_bot.web.routes import main_bp
+
+
+def create_app() -> Flask:
+    """Application factory: build and configure the Flask app."""
+    app = Flask(
+        __name__,
+        template_folder="templates",
+        static_folder="static",
+    )
+
+    app.register_blueprint(main_bp)
+
+    return app

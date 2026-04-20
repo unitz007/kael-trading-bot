@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Kael Trading Bot{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <a href="{{ url_for('main.index') }}" class="navbar-logo">📊 Kael Trading Bot</a>
+        </div>
+        <ul class="navbar-nav">
+            <li class="nav-item{% if request.path.startswith('/pairs') %} active{% endif %}">
+                <a href="{{ url_for('main.pairs_list') }}">Forex Pairs</a>
+            </li>
+            <li class="nav-item{% if request.path.startswith('/training') %} active{% endif %}">
+                <a href="{{ url_for('main.training') }}">Model Training</a>
+            </li>
+            <li class="nav-item{% if request.path.startswith('/predictions') %} active{% endif %}">
+                <a href="{{ url_for('main.predictions') }}">Predictions</a>
+            </li>
+        </ul>
+    </nav>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <p>Kael Trading Bot &copy; {{ now.year if now else 2025 }}</p>
+    </footer>
+
+    <script>
+        // Pass Flask-generated URLs to JS
+        window.KAEL = {
+            apiBase: "{{ url_for('main.index') }}".replace(/\/$/, ""),
+        };
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

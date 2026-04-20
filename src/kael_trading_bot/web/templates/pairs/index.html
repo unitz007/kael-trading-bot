@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Forex Pairs – Kael Trading Bot{% endblock %}
+
+{% block content %}
+<h1>Forex Pairs</h1>
+
+<div id="pairs-data-source" class="data-source-badge"></div>
+
+<div id="pairs-loading" class="loading">
+    <div class="spinner"></div>
+    <p>Loading forex pairs…</p>
+</div>
+
+<div id="pairs-error" class="error-message" style="display:none;">
+    <strong>Unable to load data</strong>
+    <p id="pairs-error-text"></p>
+    <button onclick="loadPairs()" class="btn btn-secondary">Retry</button>
+</div>
+
+<div id="pairs-container" style="display:none;">
+    <table class="pairs-table">
+        <thead>
+            <tr>
+                <th>Symbol</th>
+                <th>Last Price</th>
+                <th>Change (%)</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody id="pairs-tbody"></tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadPairs() {
+    const loadingEl = document.getElementById('pairs-loading');
+    const errorEl = document.getElementById('pairs-error');
+    const containerEl = document.getElementById('pairs-container');
+    const sourceEl = document.getElementById('pairs-data-source');
+
+    loadingEl.style.display = '';
+    errorEl.style.display = 'none';
+    containerEl.style.display = 'none';
+
+    try {
+        const resp = await fetch(window.KAEL.apiBase + '/api/pairs');
+        if (!resp.ok) {
+            throw new Error(`Server responded with ${resp.status}`);
+        }
+        const data = await resp.json();
+
+        loadingEl.style.display = 'none';
+
+        if (data.source === 'mock') {
+            sourceEl.textContent = '⚡ Using mock data (API unavailable)';
+            sourceEl.className = 'data-source-badge badge-warn';
+        } else {
+            sourceEl.textContent = '✅ Live data from API';
+            sourceEl.className = 'data-source-badge badge-ok';
+        }
+
+        const tbody = document.getElementById('pairs-tbody');
+        tbody.innerHTML = '';
+
+        for (const pair of data.pairs) {
+            const changeClass = pair.change_pct >= 0 ? 'positive' : 'negative';
+            const changeSign = pair.change_pct >= 0 ? '+' : '';
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="symbol-cell">
+                    <strong>${escapeHtml(pair.symbol)}</strong>
+                </td>
+                <td>${pair.last_price.toFixed(4)}</td>
+                <td class="${changeClass}">${changeSign}${pair.change_pct.toFixed(2)}%</td>
+                <td>
+                    <a href="${window.KAEL.apiBase}/pairs/${encodeURIComponent(pair.ticker)}" class="btn btn-primary btn-sm">View →</a>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        containerEl.style.display = '';
+
+    } catch (err) {
+        loadingEl.style.display = 'none';
+        errorEl.style.display = '';
+        document.getElementById('pairs-error-text').textContent =
+            err.message || 'Could not reach the data source.';
+    }
+}
+
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+document.addEventListener('DOMContentLoaded', loadPairs);
+</script>
+{% endblock %}
