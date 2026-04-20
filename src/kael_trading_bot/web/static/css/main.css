@@ -1,0 +1,349 @@
+/* ==========================================================================
+   Main stylesheet — Kael Trading Bot Web UI
+   ========================================================================== */
+
+/* --- Reset & base -------------------------------------------------------- */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    --color-primary: #3b82f6;
+    --color-primary-hover: #2563eb;
+    --color-success: #22c55e;
+    --color-warning: #f59e0b;
+    --color-error: #ef4444;
+    --color-bg: #f8fafc;
+    --color-surface: #ffffff;
+    --color-text: #1e293b;
+    --color-text-secondary: #64748b;
+    --color-border: #e2e8f0;
+    --radius: 8px;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        "Helvetica Neue", Arial, sans-serif;
+    color: var(--color-text);
+    background: var(--color-bg);
+    line-height: 1.6;
+}
+
+/* --- Navbar -------------------------------------------------------------- */
+.navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    height: 56px;
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    box-shadow: var(--shadow);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.navbar-logo {
+    font-weight: 700;
+    font-size: 1.125rem;
+    color: var(--color-primary);
+    text-decoration: none;
+}
+
+.navbar-nav {
+    display: flex;
+    gap: 8px;
+}
+
+.nav-link {
+    padding: 8px 16px;
+    border-radius: var(--radius);
+    text-decoration: none;
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: background 0.15s, color 0.15s;
+}
+
+.nav-link:hover {
+    background: #f1f5f9;
+    color: var(--color-text);
+}
+
+.nav-link.active {
+    background: #eff6ff;
+    color: var(--color-primary);
+}
+
+/* --- Layout -------------------------------------------------------------- */
+.container {
+    max-width: 960px;
+    margin: 32px auto;
+    padding: 0 24px;
+}
+
+.footer {
+    text-align: center;
+    padding: 24px;
+    color: var(--color-text-secondary);
+    font-size: 0.8125rem;
+    margin-top: 64px;
+    border-top: 1px solid var(--color-border);
+}
+
+/* --- Cards --------------------------------------------------------------- */
+.card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow);
+}
+
+.card h2 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+}
+
+/* --- Buttons ------------------------------------------------------------- */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background: var(--color-primary);
+    color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: var(--color-primary-hover);
+}
+
+/* --- Form elements ------------------------------------------------------- */
+.form-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.form-row label {
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+}
+
+.form-row select {
+    flex: 1;
+    max-width: 260px;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    background: var(--color-surface);
+    color: var(--color-text);
+}
+
+/* --- Alerts -------------------------------------------------------------- */
+.alert {
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    margin-top: 12px;
+}
+
+.alert-error {
+    background: #fef2f2;
+    color: var(--color-error);
+    border: 1px solid #fecaca;
+}
+
+.alert-success {
+    background: #f0fdf4;
+    color: var(--color-success);
+    border: 1px solid #bbf7d0;
+}
+
+.alert-warning {
+    background: #fffbeb;
+    color: var(--color-warning);
+    border: 1px solid #fde68a;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* --- Table --------------------------------------------------------------- */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.table th,
+.table td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.table th {
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    font-size: 0.8125rem;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.table tbody tr:hover {
+    background: #f8fafc;
+}
+
+/* --- Training jobs ------------------------------------------------------- */
+.job-card {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 12px;
+    background: var(--color-bg);
+}
+
+.job-card:last-child {
+    margin-bottom: 0;
+}
+
+.job-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.job-pair {
+    font-weight: 600;
+    font-size: 0.9375rem;
+}
+
+.job-status {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 999px;
+}
+
+.job-status.running {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.job-status.pending {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.job-status.completed {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.job-status.failed {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.job-message {
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
+}
+
+.job-metrics {
+    display: flex;
+    gap: 16px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+
+.metric {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.metric-label {
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.metric-value {
+    font-size: 0.9375rem;
+    font-weight: 600;
+}
+
+/* --- Spinner ------------------------------------------------------------- */
+.spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid #dbeafe;
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* --- Placeholder --------------------------------------------------------- */
+.placeholder-text {
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+}
+
+/* --- Responsive (basic) -------------------------------------------------- */
+@media (max-width: 640px) {
+    .form-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .form-row select {
+        max-width: 100%;
+    }
+
+    .job-metrics {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .table {
+        font-size: 0.8125rem;
+    }
+}

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Kael Trading Bot{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/main.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     {% block extra_head %}{% endblock %}
@@ -11,6 +12,14 @@
 <body>
     <nav class="navbar">
         <div class="navbar-brand">
+            <a href="/" class="navbar-logo">Kael Trading Bot</a>
+        </div>
+        <div class="navbar-nav">
+            <a href="/training"
+               class="nav-link{% if page == 'training' %} active{% endif %}">
+                Training
+            </a>
+        </div>
             <a href="{{ url_for('main.index') }}" class="navbar-logo">📊 Kael Trading Bot</a>
         </div>
         <ul class="navbar-nav">
@@ -31,6 +40,9 @@
     </main>
 
     <footer class="footer">
+        <p>Kael Trading Bot &copy; 2025</p>
+    </footer>
+
         <p>Kael Trading Bot &copy; {{ now.year if now else 2025 }}</p>
     </footer>
 
