@@ -28,6 +28,9 @@ import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
+# NOTE: The removed `json` and `StringIO` imports are no longer needed
+# after the migration from Flask to FastAPI TestClient.
+
 from kael_trading_bot.api.app import create_app
 
 

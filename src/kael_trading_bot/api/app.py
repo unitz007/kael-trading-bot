@@ -25,7 +25,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import numpy as np
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -35,7 +35,7 @@ from kael_trading_bot.config import (
 )
 from kael_trading_bot.features.pipeline import FeatureConfig, build_feature_matrix
 from kael_trading_bot.ingestion import ForexDataFetcher
-from kael_trading_bot.training.persistence import ModelMetadata, ModelPersistence
+from kael_trading_bot.training.persistence import ModelPersistence
 from kael_trading_bot.training.pipeline import PipelineConfig, TrainingPipeline
 
 logger = logging.getLogger(__name__)
