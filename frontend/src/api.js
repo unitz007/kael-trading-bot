@@ -41,6 +41,10 @@ export async function getPredictions(pair) {
   return request(`/pairs/${encodeURIComponent(pair)}/predict`);
 }
 
+export async function getTradeSetup(pair) {
+  return request(`/pairs/${encodeURIComponent(pair)}/trade-setup`);
+}
+
 export async function getForecast(pair, horizon = 30) {
   return request(`/pairs/${encodeURIComponent(pair)}/forecast?horizon=${encodeURIComponent(horizon)}`);
 }

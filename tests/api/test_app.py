@@ -592,6 +592,224 @@ class TestListModels:
             assert resp.status_code == 500
 
 
+
+# ---------------------------------------------------------------------------
+# Trade Setup — GET /api/v1/pairs/<pair>/trade-setup
+# ---------------------------------------------------------------------------
+
+
+class TestTradeSetup:
+    """Tests for the trade-setup endpoint."""
+
+    def test_trade_setup_unsupported_pair_404(self, client):
+        resp = client.get("/api/v1/pairs/INVALIDPAIR/trade-setup")
+        assert resp.status_code == 404
+        data = resp.json()
+        assert "error" in data
+
+    def test_trade_setup_no_model_404(self, client):
+        """When no trained model exists for the pair → 404."""
+        with patch("kael_trading_bot.api.app.ModelPersistence") as mock_cls:
+            mock_persistence = MagicMock()
+            mock_persistence.list_versions.return_value = []
+            mock_cls.return_value = mock_persistence
+
+            resp = client.get("/api/v1/pairs/EURUSD=X/trade-setup")
+            assert resp.status_code == 404
+            data = resp.json()
+            assert "error" in data
+            assert "Train a model first" in data["error"]
+
+    @patch("kael_trading_bot.api.app.build_feature_matrix")
+    @patch("kael_trading_bot.api.app.ForexDataFetcher")
+    @patch("kael_trading_bot.api.app.ModelPersistence")
+    def test_trade_setup_success_buy(
+        self, mock_persistence_cls, mock_fetcher_cls, mock_build_features,
+        client, sample_ohlcv_df, mock_feature_matrix,
+    ):
+        """A successful trade setup with buy direction."""
+        # Model mock — predicts UP (class 1)
+        mock_model = MagicMock()
+        mock_model.predict.return_value = np.array([1])
+        mock_model.predict_proba.return_value = np.array([[0.3, 0.7]])
+
+        mock_metadata = MagicMock()
+        mock_metadata.trained_at = "2024-01-01T00:00:00+00:00"
+        mock_metadata.feature_names = [
+            c for c in mock_feature_matrix.columns
+            if not c.startswith(("future_return", "target_"))
+        ]
+
+        mock_persistence = MagicMock()
+        mock_persistence.list_versions.return_value = ["v20240101T000000"]
+        mock_persistence.load.return_value = (mock_model, mock_metadata)
+        mock_persistence_cls.return_value = mock_persistence
+
+        # Ingestion mock
+        mock_fetcher = MagicMock()
+        mock_fetcher.get.return_value = sample_ohlcv_df
+        mock_fetcher_cls.return_value = mock_fetcher
+
+        # Feature mock — last row has atr_14
+        mock_build_features.return_value = mock_feature_matrix
+
+        resp = client.get("/api/v1/pairs/EURUSD=X/trade-setup")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["pair"] == "EURUSD=X"
+        assert data["direction"] == "buy"
+        assert "entry_price" in data
+        assert "stop_loss" in data
+        assert "take_profit" in data
+        assert "confidence" in data
+        assert data["confidence"] > 0
+        assert data["confidence"] <= 1.0
+        assert data["stop_loss"] < data["entry_price"]  # buy: SL below entry
+        assert data["take_profit"] > data["entry_price"]  # buy: TP above entry
+        assert data["model_name"] == "eurusd_x"
+        assert data["model_version"] == "v20240101T000000"
+        assert "generated_at" in data
+
+    @patch("kael_trading_bot.api.app.build_feature_matrix")
+    @patch("kael_trading_bot.api.app.ForexDataFetcher")
+    @patch("kael_trading_bot.api.app.ModelPersistence")
+    def test_trade_setup_success_sell(
+        self, mock_persistence_cls, mock_fetcher_cls, mock_build_features,
+        client, sample_ohlcv_df, mock_feature_matrix,
+    ):
+        """A successful trade setup with sell direction."""
+        # Model mock — predicts DOWN (class 0)
+        mock_model = MagicMock()
+        mock_model.predict.return_value = np.array([0])
+        mock_model.predict_proba.return_value = np.array([[0.8, 0.2]])
+
+        mock_metadata = MagicMock()
+        mock_metadata.trained_at = "2024-01-01T00:00:00+00:00"
+        mock_metadata.feature_names = [
+            c for c in mock_feature_matrix.columns
+            if not c.startswith(("future_return", "target_"))
+        ]
+
+        mock_persistence = MagicMock()
+        mock_persistence.list_versions.return_value = ["v20240101T000000"]
+        mock_persistence.load.return_value = (mock_model, mock_metadata)
+        mock_persistence_cls.return_value = mock_persistence
+
+        mock_fetcher = MagicMock()
+        mock_fetcher.get.return_value = sample_ohlcv_df
+        mock_fetcher_cls.return_value = mock_fetcher
+
+        mock_build_features.return_value = mock_feature_matrix
+
+        resp = client.get("/api/v1/pairs/EURUSD=X/trade-setup")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["direction"] == "sell"
+        assert data["stop_loss"] > data["entry_price"]  # sell: SL above entry
+        assert data["take_profit"] < data["entry_price"]  # sell: TP below entry
+        assert data["confidence"] == 0.8  # prob of predicted class (0)
+
+    @patch("kael_trading_bot.api.app.build_feature_matrix")
+    @patch("kael_trading_bot.api.app.ForexDataFetcher")
+    @patch("kael_trading_bot.api.app.ModelPersistence")
+    def test_trade_setup_pair_without_suffix(
+        self, mock_persistence_cls, mock_fetcher_cls, mock_build_features,
+        client, sample_ohlcv_df, mock_feature_matrix,
+    ):
+        """Passing 'EURUSD' (without =X) should still work."""
+        mock_model = MagicMock()
+        mock_model.predict.return_value = np.array([1])
+        mock_model.predict_proba.return_value = np.array([[0.4, 0.6]])
+
+        mock_metadata = MagicMock()
+        mock_metadata.feature_names = [
+            c for c in mock_feature_matrix.columns
+            if not c.startswith(("future_return", "target_"))
+        ]
+
+        mock_persistence = MagicMock()
+        mock_persistence.list_versions.return_value = ["v1"]
+        mock_persistence.load.return_value = (mock_model, mock_metadata)
+        mock_persistence_cls.return_value = mock_persistence
+
+        mock_fetcher = MagicMock()
+        mock_fetcher.get.return_value = sample_ohlcv_df
+        mock_fetcher_cls.return_value = mock_fetcher
+
+        mock_build_features.return_value = mock_feature_matrix
+
+        resp = client.get("/api/v1/pairs/EURUSD/trade-setup")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["pair"] == "EURUSD=X"
+
+    @patch("kael_trading_bot.api.app.ModelPersistence")
+    def test_trade_setup_no_feature_names_400(self, mock_persistence_cls, client):
+        """When model metadata has no feature names → 400."""
+        mock_model = MagicMock()
+        mock_metadata = MagicMock()
+        mock_metadata.feature_names = None
+
+        mock_persistence = MagicMock()
+        mock_persistence.list_versions.return_value = ["v1"]
+        mock_persistence.load.return_value = (mock_model, mock_metadata)
+        mock_persistence_cls.return_value = mock_persistence
+
+        resp = client.get("/api/v1/pairs/EURUSD=X/trade-setup")
+        assert resp.status_code == 400
+        data = resp.json()
+        assert "no feature names" in data["error"]
+
+    @patch("kael_trading_bot.api.app.ModelPersistence")
+    def test_trade_setup_model_list_error_500(self, mock_persistence_cls, client):
+        """When listing model versions fails → 500."""
+        mock_persistence = MagicMock()
+        mock_persistence.list_versions.side_effect = RuntimeError("db error")
+        mock_persistence_cls.return_value = mock_persistence
+
+        resp = client.get("/api/v1/pairs/EURUSD=X/trade-setup")
+        assert resp.status_code == 500
+
+    @patch("kael_trading_bot.api.app.build_feature_matrix")
+    @patch("kael_trading_bot.api.app.ForexDataFetcher")
+    @patch("kael_trading_bot.api.app.ModelPersistence")
+    def test_trade_setup_returns_all_required_fields(
+        self, mock_persistence_cls, mock_fetcher_cls, mock_build_features,
+        client, sample_ohlcv_df, mock_feature_matrix,
+    ):
+        """Verify all required fields are present in the response."""
+        mock_model = MagicMock()
+        mock_model.predict.return_value = np.array([1])
+        mock_model.predict_proba.return_value = np.array([[0.35, 0.65]])
+
+        mock_metadata = MagicMock()
+        mock_metadata.feature_names = [
+            c for c in mock_feature_matrix.columns
+            if not c.startswith(("future_return", "target_"))
+        ]
+
+        mock_persistence = MagicMock()
+        mock_persistence.list_versions.return_value = ["v20240101T000000"]
+        mock_persistence.load.return_value = (mock_model, mock_metadata)
+        mock_persistence_cls.return_value = mock_persistence
+
+        mock_fetcher = MagicMock()
+        mock_fetcher.get.return_value = sample_ohlcv_df
+        mock_fetcher_cls.return_value = mock_fetcher
+
+        mock_build_features.return_value = mock_feature_matrix
+
+        resp = client.get("/api/v1/pairs/EURUSD=X/trade-setup")
+        assert resp.status_code == 200
+        data = resp.json()
+
+        required_fields = [
+            "pair", "direction", "entry_price", "stop_loss",
+            "take_profit", "confidence", "atr", "model_name",
+            "model_version", "generated_at",
+        ]
+        for field in required_fields:
+            assert field in data, f"Missing field '{field}' in trade setup response"
 # ---------------------------------------------------------------------------
 # AC#11 — CLI entry point
 # ---------------------------------------------------------------------------
