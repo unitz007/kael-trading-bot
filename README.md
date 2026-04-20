@@ -1,6 +1,6 @@
 # Kael Trading Bot
 
-ML-based forex trading bot with technical feature engineering and model training pipeline.
+ML-based forex trading bot with technical feature engineering, model training pipeline, REST API, and web UI.
 
 ---
 
@@ -13,6 +13,8 @@ ML-based forex trading bot with technical feature engineering and model training
   - [Configuration](#configuration)
   - [Model Training](#model-training)
   - [Using a Trained Model](#using-a-trained-model)
+  - [REST API](#rest-api)
+  - [Web UI](#web-ui)
   - [Running Tests](#running-tests)
 - [Project Structure](#project-structure)
 - [License](#license)
@@ -22,6 +24,8 @@ ML-based forex trading bot with technical feature engineering and model training
 ## Overview
 
 Kael Trading Bot ingests forex pair data via Yahoo Finance, engineers technical features (SMA, EMA, RSI, MACD, Bollinger Bands, ATR, rolling stats, temporal features, and directional targets), trains ML classification models (XGBoost, LightGBM, Random Forest, Logistic Regression), evaluates them with both classification and trading-oriented metrics, and persists trained models for downstream use.
+
+In addition to the Python API and CLI, the project provides a **REST API** that exposes bot capabilities as HTTP endpoints and a **Web UI** that lets you browse forex pairs, train models, and view predictions from the browser.
 
 ---
 
@@ -76,6 +80,7 @@ Kael Trading Bot ingests forex pair data via Yahoo Finance, engineers technical 
    - `joblib` — model persistence
    - `matplotlib`, `seaborn` — visualisation
    - `python-dotenv` — environment variable loading
+   - `flask` — web UI and REST API server
 
 4. **(Optional) Install the package in editable mode for development:**
 
@@ -139,7 +144,7 @@ pipeline_cfg = PipelineConfig(
 
 ### Model Training
 
-There is no CLI entry point — the training pipeline is used as a **Python API**. Create a training script (or run in a notebook/Jupyter session):
+There is no dedicated CLI entry point — the training pipeline is used as a **Python API**. Create a training script (or run in a notebook/Jupyter session):
 
 ```python
 import numpy as np
@@ -233,6 +238,78 @@ probabilities = model.predict_proba(X_new)[:, 1]  # probability of positive clas
 
 > ⚠️ **Disclaimer:** This bot is for educational and research purposes only. Forex trading involves significant risk. Always use a demo/paper trading account and never risk capital you cannot afford to lose.
 
+### REST API
+
+The project ships a Flask-based REST API that exposes bot capabilities as HTTP endpoints. All API routes are prefixed with `/api/v1/`.
+
+#### Starting the API server
+
+```bash
+python main.py serve
+# or specify a custom port
+python main.py serve --port 5000
+```
+
+The server starts on `http://0.0.0.0:5000` by default.
+
+#### Endpoints
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| `GET` | `/api/v1/pairs` | List all available/supported forex pairs |
+| `GET` | `/api/v1/pairs/<pair>/history` | Retrieve historical OHLCV price data for a given pair |
+| `POST` | `/api/v1/pairs/<pair>/train` | Trigger model training for a given pair |
+| `GET` | `/api/v1/pairs/<pair>/predict` | Get prediction results using the latest trained model for a pair |
+| `GET` | `/api/v1/models` | List all trained models with their metadata and metrics |
+
+**Pairs** — `GET /api/v1/pairs`
+
+Returns the configured list of supported forex pairs with their count.
+
+**Historical Data** — `GET /api/v1/pairs/<pair>/history`
+
+Returns OHLCV price data for a pair (e.g. `EURUSD` or `EURUSD=X`). Responds with `404` if the pair is not supported or data is unavailable.
+
+**Training** — `POST /api/v1/pairs/<pair>/train`
+
+Runs the full training pipeline (ingestion → feature engineering → model training) for the specified pair. Returns training status, test metrics, and the saved model path. Training is synchronous — the response is returned once training completes.
+
+**Predictions** — `GET /api/v1/pairs/<pair>/predict`
+
+Loads the latest trained model for a pair, fetches current data, and returns directional predictions (UP/DOWN) with confidence probabilities. Responds with `404` if no trained model exists for the pair.
+
+**Models** — `GET /api/v1/models`
+
+Lists all saved models across all pairs with version information, model type, training timestamp, metrics, and feature names.
+
+### Web UI
+
+The project includes a browser-based Web UI served by Flask. It provides server-rendered HTML pages with vanilla JavaScript for interactivity.
+
+#### Starting the Web UI
+
+```bash
+python -m kael_trading_bot.web
+```
+
+This starts the web server on `http://localhost:5000`. Open this URL in your browser to access the interface.
+
+#### Pages
+
+**Forex Pairs** (`/pairs`)
+
+Lists all configured forex pairs in a responsive table. Clicking a pair opens its detail page showing historical price data — a line chart (using Chart.js) for the selected period (30 / 90 / 180 / 365 days) and an OHLCV data table below.
+
+**Model Training** (`/training`)
+
+Allows you to trigger model training from the browser. Select a forex pair, start a training job, and monitor its status in real time. Completed jobs display evaluation metrics (accuracy, precision, recall, F1, ROC-AUC) and the model version that was saved.
+
+**Predictions** (`/predictions`)
+
+Displays ML prediction results for a selected forex pair. Shows the predicted direction (UP or DOWN), confidence score, the model version used, when the model was trained, and the timestamp the prediction was generated. A model status summary indicates which pairs have a trained model available.
+
+---
+
 ### Running Tests
 
 The project uses `pytest` for testing. Tests are located in the `tests/` directory:
@@ -263,15 +340,39 @@ src/kael_trading_bot/
 │   ├── indicators.py   # SMA, EMA, RSI, MACD, BB, ATR
 │   ├── temporal.py     # Time-based features, rolling stats
 │   └── targets.py      # Future returns, directional targets
-└── training/           # ML model training pipeline
-    ├── __init__.py
-    ├── pipeline.py     # TrainingPipeline, PipelineConfig
-    ├── models.py       # ModelRegistry, ModelType (XGBoost, LightGBM, RF, LR)
-    ├── splitting.py    # TimeSeriesSplitter (chronological split)
-    ├── evaluation.py   # Classification + trading metrics
-    ├── persistence.py  # ModelPersistence (save/load with metadata)
-    └── logging.py      # TrainingLogger (JSON-lines run history)
+├── training/           # ML model training pipeline
+│   ├── __init__.py
+│   ├── pipeline.py     # TrainingPipeline, PipelineConfig
+│   ├── models.py       # ModelRegistry, ModelType (XGBoost, LightGBM, RF, LR)
+│   ├── splitting.py    # TimeSeriesSplitter (chronological split)
+│   ├── evaluation.py   # Classification + trading metrics
+│   ├── persistence.py  # ModelPersistence (save/load with metadata)
+│   └── logging.py      # TrainingLogger (JSON-lines run history)
+├── api/                # REST API layer
+│   ├── __init__.py     # create_app export
+│   └── app.py          # Flask app with /api/v1/ endpoints (pairs, history, train, predict, models)
+└── web/                # Web UI
+    ├── __init__.py     # create_app export
+    ├── __main__.py     # Entry point (python -m kael_trading_bot.web)
+    ├── app.py          # Flask app factory with blueprint registration
+    ├── routes.py       # API router (/api/pairs, /api/training, /api/models)
+    ├── jobs.py         # TrainingJobStore — in-memory job tracking
+    ├── predictions.py  # PredictionService — model loading and prediction logic
+    ├── mock_data.py    # Mock data fallback for UI development
+    ├── templates.py    # Jinja2 template rendering helpers
+    ├── templates/      # Jinja2 HTML templates
+    │   ├── base.html   # Shared layout, navigation, CSS
+    │   ├── placeholder.html
+    │   ├── training.html   # Model training page
+    │   ├── predictions.html # Predictions page
+    │   └── pairs/
+    │       ├── index.html  # Forex pairs listing
+    │       └── detail.html # Historical price data for a single pair
+    └── static/         # CSS and JavaScript assets
+        ├── css/
+        └── js/
 
+main.py                 # CLI entry point (train, predict, serve commands)
 tests/                  # Unit tests
 models/                 # Saved trained models (generated at runtime)
 logs/                   # Training run logs (generated at runtime)
