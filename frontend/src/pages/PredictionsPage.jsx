@@ -66,15 +66,15 @@ export default function PredictionsPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Predictions</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Predictions</h1>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           View prediction results from the latest trained model for a forex pair.
         </p>
       </div>
 
       {/* Pair Selection */}
-      <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm mb-6">
-        <label htmlFor="pred-pair-select" className="block text-sm font-medium text-gray-700 mb-2">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm mb-6">
+        <label htmlFor="pred-pair-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           Select Forex Pair
         </label>
         <div className="flex flex-col sm:flex-row gap-3">
@@ -87,7 +87,7 @@ export default function PredictionsPage() {
               setError(null);
             }}
             disabled={loading}
-            className="block w-full max-w-xs rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 focus:outline-none disabled:opacity-50"
+            className="block w-full max-w-xs rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-4 py-2.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-200 dark:focus:ring-primary-800 focus:outline-none disabled:opacity-50"
           >
             {pairs.map((pair) => (
               <option key={pair} value={pair}>
@@ -99,7 +99,7 @@ export default function PredictionsPage() {
           <button
             onClick={fetchPredictions}
             disabled={loading || !selectedPair}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 dark:bg-primary-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-700 dark:hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
           >
             {loading ? (
               <>
@@ -115,10 +115,10 @@ export default function PredictionsPage() {
 
       {/* Loading */}
       {loading && (
-        <div className="rounded-xl border border-blue-200 bg-blue-50 p-5 mb-6">
+        <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-5 mb-6">
           <div className="flex items-center gap-3">
             <Spinner className="py-0" />
-            <p className="text-sm text-blue-700">
+            <p className="text-sm text-blue-700 dark:text-blue-200">
               Fetching predictions for {formatPair(selectedPair)}...
             </p>
           </div>
@@ -154,21 +154,21 @@ export default function PredictionsPage() {
           </div>
 
           {/* Model Info */}
-          <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm mb-6">
-            <h2 className="text-sm font-semibold text-gray-900 mb-3">Model Information</h2>
+          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm mb-6">
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Model Information</h2>
             <div className="grid gap-3 sm:grid-cols-3 text-sm">
               <div>
-                <span className="text-gray-500">Pair:</span>{' '}
-                <span className="font-medium">{formatPair(predictions.pair)}</span>
+                <span className="text-gray-500 dark:text-gray-400">Pair:</span>{' '}
+                <span className="font-medium text-gray-900 dark:text-gray-100">{formatPair(predictions.pair)}</span>
               </div>
               <div>
-                <span className="text-gray-500">Model Name:</span>{' '}
-                <span className="font-medium font-mono text-xs">{predictions.model_name}</span>
+                <span className="text-gray-500 dark:text-gray-400">Model Name:</span>{' '}
+                <span className="font-medium font-mono text-xs text-gray-900 dark:text-gray-100">{predictions.model_name}</span>
               </div>
               {predictions.trained_at && (
                 <div>
-                  <span className="text-gray-500">Trained At:</span>{' '}
-                  <span className="font-medium">
+                  <span className="text-gray-500 dark:text-gray-400">Trained At:</span>{' '}
+                  <span className="font-medium text-gray-900 dark:text-gray-100">
                     {new Date(predictions.trained_at).toLocaleString()}
                   </span>
                 </div>
@@ -178,53 +178,53 @@ export default function PredictionsPage() {
 
           {/* Predictions Table */}
           {predictions.predictions?.length > 0 && (
-            <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-200">
-                <h2 className="text-sm font-semibold text-gray-900">
+            <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                   Prediction Results
-                  <span className="ml-2 text-xs font-normal text-gray-500">
+                  <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">
                     Showing most recent predictions
                   </span>
                 </h2>
               </div>
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-700/50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Date
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Prediction
                       </th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Probability (UP)
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                     {[...predictions.predictions].reverse().map((pred, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
+                      <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap">
                           {pred.date}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <span
                             className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
                               pred.prediction === 'UP'
-                                ? 'bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20'
-                                : 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20'
+                                ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-600/20 dark:ring-green-500/30'
+                                : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 ring-1 ring-inset ring-red-600/20 dark:ring-red-500/30'
                             }`}
                           >
                             <span
                               className={`h-1.5 w-1.5 rounded-full ${
-                                pred.prediction === 'UP' ? 'bg-green-500' : 'bg-red-500'
+                                pred.prediction === 'UP' ? 'bg-green-500 dark:bg-green-400' : 'bg-red-500 dark:bg-red-400'
                               }`}
                             />
                             {pred.prediction}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-sm text-right text-gray-900 font-mono">
+                        <td className="px-4 py-3 text-sm text-right text-gray-900 dark:text-gray-100 font-mono">
                           {pred.probability_up != null
                             ? `${(pred.probability_up * 100).toFixed(1)}%`
                             : '—'}
@@ -244,14 +244,14 @@ export default function PredictionsPage() {
 
 function SummaryCard({ label, value, color = 'blue' }) {
   const colorClasses = {
-    blue: 'bg-primary-50 text-primary-700',
-    green: 'bg-green-50 text-green-700',
-    red: 'bg-red-50 text-red-700',
+    blue: 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400',
+    green: 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400',
+    red: 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400',
   };
 
   return (
     <div className={`rounded-xl p-4 ${colorClasses[color] || colorClasses.blue}`}>
-      <p className="text-xs font-medium uppercase tracking-wider opacity-75">{label}</p>
+      <p className="text-xs font-medium uppercase tracking-wider opacity-90">{label}</p>
       <p className="mt-1 text-2xl font-bold">{value}</p>
     </div>
   );

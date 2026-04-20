@@ -4,14 +4,15 @@ import Navbar, { TopBar } from './components/Navbar';
 import ForexPairsPage from './pages/ForexPairsPage';
 import TrainingPage from './pages/TrainingPage';
 import PredictionsPage from './pages/PredictionsPage';
-import ForecastPage from './pages/ForecastPage';import TradeSetupPage from './pages/TradeSetupPage';import LiveSetupsPage from './pages/LiveSetupsPage';
-
+import ForecastPage from './pages/ForecastPage';
+import TradeSetupPage from './pages/TradeSetupPage';
+import LiveSetupsPage from './pages/LiveSetupsPage';
 
 export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       <Navbar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -22,8 +23,9 @@ export default function App() {
             <Route path="/" element={<ForexPairsPage />} />
             <Route path="/training" element={<TrainingPage />} />
             <Route path="/predictions" element={<PredictionsPage />} />
-            <Route path="/forecast" element={<ForecastPage />} />            <Route path="/trade-setup" element={<TradeSetupPage />} />            <Route path="/live-setups" element={<LiveSetupsPage />} />
-
+            <Route path="/forecast" element={<ForecastPage />} />
+            <Route path="/trade-setup" element={<TradeSetupPage />} />
+            <Route path="/live-setups" element={<LiveSetupsPage />} />
           </Routes>
         </main>
       </div>

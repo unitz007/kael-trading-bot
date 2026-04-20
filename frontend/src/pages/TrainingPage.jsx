@@ -65,18 +65,18 @@ export default function TrainingPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Model Training</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Model Training</h1>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Select a forex pair and start a new model training session.
         </p>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row gap-4 items-end">
           <div className="flex-1 w-full">
             <label
               htmlFor="pair-select"
-              className="block text-sm font-medium text-gray-700 mb-1"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
             >
               Forex Pair
             </label>
@@ -84,7 +84,7 @@ export default function TrainingPage() {
               id="pair-select"
               value={selectedPair}
               onChange={(e) => setSelectedPair(e.target.value)}
-              className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+              className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-1 focus:ring-primary-500 focus:outline-none"
             >
               <option value="">Select a pair...</option>
               {pairs.map((pair) => (
@@ -98,7 +98,7 @@ export default function TrainingPage() {
           <div className="flex-1 w-full">
             <label
               htmlFor="timeframe-select"
-              className="block text-sm font-medium text-gray-700 mb-1"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
             >
               Time Frame
             </label>
@@ -106,7 +106,7 @@ export default function TrainingPage() {
               id="timeframe-select"
               value={selectedTimeframe}
               onChange={(e) => setSelectedTimeframe(e.target.value)}
-              className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+              className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-1 focus:ring-primary-500 focus:outline-none"
             >
               {TIMEFRAME_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -119,7 +119,7 @@ export default function TrainingPage() {
           <button
             onClick={handleTrain}
             disabled={!selectedPair || training}
-            className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+            className="rounded-lg bg-primary-600 dark:bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 dark:hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
           >
             {training ? <Spinner className="h-5 w-5 inline" /> : 'Train Model'}
           </button>
@@ -129,74 +129,74 @@ export default function TrainingPage() {
       {training && (
         <div className="mt-6">
           <Spinner className="py-10" />
-          <p className="text-center text-sm text-gray-500 mt-2">
+          <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-2">
             Training model for {selectedPair}...
           </p>
         </div>
       )}
 
       {result && (
-        <div className="mt-6 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 bg-green-50">
-            <h2 className="text-lg font-semibold text-green-800">
+        <div className="mt-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-green-50 dark:bg-green-900/20">
+            <h2 className="text-lg font-semibold text-green-800 dark:text-green-400">
               Training Complete
             </h2>
           </div>
 
           <div className="px-6 py-4">
             <table className="w-full text-sm">
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {result.model_name && (
                   <tr>
-                    <td className="py-2 pr-4 font-medium text-gray-700 whitespace-nowrap">
+                    <td className="py-2 pr-4 font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
                       Model
                     </td>
-                    <td className="py-2 text-gray-900">{result.model_name}</td>
+                    <td className="py-2 text-gray-900 dark:text-gray-100">{result.model_name}</td>
                   </tr>
                 )}
                 {result.version != null && (
                   <tr>
-                    <td className="py-2 pr-4 font-medium text-gray-700 whitespace-nowrap">
+                    <td className="py-2 pr-4 font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
                       Version
                     </td>
-                    <td className="py-2 text-gray-900">{result.version}</td>
+                    <td className="py-2 text-gray-900 dark:text-gray-100">{result.version}</td>
                   </tr>
                 )}
                 {result.model_type && (
                   <tr>
-                    <td className="py-2 pr-4 font-medium text-gray-700 whitespace-nowrap">
+                    <td className="py-2 pr-4 font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
                       Type
                     </td>
-                    <td className="py-2 text-gray-900">{result.model_type}</td>
+                    <td className="py-2 text-gray-900 dark:text-gray-100">{result.model_type}</td>
                   </tr>
                 )}
                 {result.trained_at && (
                   <tr>
-                    <td className="py-2 pr-4 font-medium text-gray-700 whitespace-nowrap">
+                    <td className="py-2 pr-4 font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
                       Trained At
                     </td>
-                    <td className="py-2 text-gray-900">
+                    <td className="py-2 text-gray-900 dark:text-gray-100">
                       {new Date(result.trained_at).toLocaleString()}
                     </td>
                   </tr>
                 )}
                 {result.training_duration != null && (
                   <tr>
-                    <td className="py-2 pr-4 font-medium text-gray-700 whitespace-nowrap">
+                    <td className="py-2 pr-4 font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
                       Duration
                     </td>
-                    <td className="py-2 text-gray-900">
+                    <td className="py-2 text-gray-900 dark:text-gray-100">
                       {result.training_duration}s
                     </td>
                   </tr>
                 )}
                 {result.status && (
                   <tr>
-                    <td className="py-2 pr-4 font-medium text-gray-700 whitespace-nowrap">
+                    <td className="py-2 pr-4 font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
                       Status
                     </td>
-                    <td className="py-2 text-gray-900">
-                      <span className="inline-flex items-center rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                    <td className="py-2 text-gray-900 dark:text-gray-100">
+                      <span className="inline-flex items-center rounded-full bg-green-50 dark:bg-green-900/30 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-600/20 dark:ring-green-500/30">
                         {result.status}
                       </span>
                     </td>
@@ -210,26 +210,26 @@ export default function TrainingPage() {
               !Array.isArray(result.test_metrics) &&
               Object.keys(result.test_metrics).length > 0 && (
                 <div className="mt-6">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
                     Test Metrics
                   </h3>
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="text-left py-2 pr-4 font-medium text-gray-700">
+                      <tr className="border-b border-gray-200 dark:border-gray-700">
+                        <th className="text-left py-2 pr-4 font-medium text-gray-700 dark:text-gray-300">
                           Metric
                         </th>
-                        <th className="text-left py-2 font-medium text-gray-700">
+                        <th className="text-left py-2 font-medium text-gray-700 dark:text-gray-300">
                           Value
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200">
+                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                       {Object.entries(result.test_metrics).map(
                         ([key, value]) => (
                           <tr key={key}>
-                            <td className="py-2 pr-4 text-gray-700">{key}</td>
-                            <td className="py-2 text-gray-900">
+                            <td className="py-2 pr-4 text-gray-700 dark:text-gray-300">{key}</td>
+                            <td className="py-2 text-gray-900 dark:text-gray-100">
                               {typeof value === 'number'
                                 ? value.toFixed(4)
                                 : String(value ?? '')}
@@ -246,7 +246,7 @@ export default function TrainingPage() {
       )}
 
       {!loading && !training && !result && !error && (
-        <div className="mt-8 text-center text-gray-400">
+        <div className="mt-8 text-center text-gray-500 dark:text-gray-400">
           <p className="text-sm">No training results yet. Select a pair and click Train Model to get started.</p>
         </div>
       )}

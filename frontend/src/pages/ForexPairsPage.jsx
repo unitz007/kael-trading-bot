@@ -45,8 +45,8 @@ export default function ForexPairsPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Forex Pairs</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Forex Pairs</h1>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Browse available forex pairs and their trained models.
         </p>
       </div>
@@ -61,41 +61,41 @@ export default function ForexPairsPage() {
           return (
             <div
               key={pair}
-              className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow"
+              className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm hover:shadow-md dark:hover:shadow-gray-900/50 transition-shadow"
             >
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                   {formatPair(pair)}
                 </h2>
                 {latestModel ? (
-                  <span className="inline-flex items-center rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                  <span className="inline-flex items-center rounded-full bg-green-50 dark:bg-green-900/30 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-600/20 dark:ring-green-500/30">
                     Model Ready
                   </span>
                 ) : (
-                  <span className="inline-flex items-center rounded-full bg-gray-50 px-2.5 py-0.5 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">
+                  <span className="inline-flex items-center rounded-full bg-gray-50 dark:bg-gray-700 px-2.5 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300 ring-1 ring-inset ring-gray-500/20 dark:ring-gray-500/30">
                     No Model
                   </span>
                 )}
               </div>
 
               <div className="mt-3 space-y-1.5">
-                <div className="flex items-center text-sm text-gray-500">
-                  <span className="font-medium text-gray-700 w-24">Ticker:</span>
-                  <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">{pair}</code>
+                <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                  <span className="font-medium text-gray-700 dark:text-gray-300 w-24">Ticker:</span>
+                  <code className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-1.5 py-0.5 rounded">{pair}</code>
                 </div>
                 {latestModel && (
                   <>
-                    <div className="flex items-center text-sm text-gray-500">
-                      <span className="font-medium text-gray-700 w-24">Version:</span>
+                    <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                      <span className="font-medium text-gray-700 dark:text-gray-300 w-24">Version:</span>
                       {latestModel.version}
                     </div>
-                    <div className="flex items-center text-sm text-gray-500">
-                      <span className="font-medium text-gray-700 w-24">Type:</span>
+                    <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                      <span className="font-medium text-gray-700 dark:text-gray-300 w-24">Type:</span>
                       {latestModel.model_type}
                     </div>
                     {latestModel.trained_at && (
-                      <div className="flex items-center text-sm text-gray-500">
-                        <span className="font-medium text-gray-700 w-24">Trained:</span>
+                      <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                        <span className="font-medium text-gray-700 dark:text-gray-300 w-24">Trained:</span>
                         {new Date(latestModel.trained_at).toLocaleDateString()}
                       </div>
                     )}
@@ -106,13 +106,13 @@ export default function ForexPairsPage() {
               <div className="mt-4 flex gap-2">
                 <Link
                   to={`/training?pair=${encodeURIComponent(pair)}`}
-                  className="flex-1 rounded-lg bg-primary-600 px-3 py-2 text-center text-sm font-medium text-white hover:bg-primary-700 transition-colors"
+                  className="flex-1 rounded-lg bg-primary-600 dark:bg-primary-600 px-3 py-2 text-center text-sm font-medium text-white hover:bg-primary-700 dark:hover:bg-primary-700 transition-colors"
                 >
                   Train
                 </Link>
                 <Link
                   to={`/predictions?pair=${encodeURIComponent(pair)}`}
-                  className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-center text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-center text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   Predict
                 </Link>

@@ -61,11 +61,11 @@ function timeAgo(isoString) {
 
 function EmptyState() {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-12 text-center">
-      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
+    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-12 text-center">
+      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700">
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className="h-8 w-8 text-gray-400"
+          className="h-8 w-8 text-gray-500 dark:text-gray-400"
           fill="none"
           viewBox="0 0 24 24"
           strokeWidth={1.5}
@@ -78,8 +78,8 @@ function EmptyState() {
           />
         </svg>
       </div>
-      <h3 className="mt-4 text-sm font-semibold text-gray-900">No trade setups found</h3>
-      <p className="mt-2 text-sm text-gray-500">
+      <h3 className="mt-4 text-sm font-semibold text-gray-900 dark:text-gray-100">No trade setups found</h3>
+      <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
         There are no recent trade setups available. Setups appear here once models are
         trained and have generated signals. Try changing the timeframe filter or refresh
         later.
@@ -91,65 +91,65 @@ function EmptyState() {
 function SetupCard({ setup, stale }) {
   const directionBadge =
     setup.direction === 'buy'
-      ? 'bg-green-100 text-green-800'
-      : 'bg-red-100 text-red-800';
+      ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400'
+      : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400';
 
   return (
     <div
-      className={`rounded-xl border bg-white p-5 shadow-sm transition-all ${
+      className={`rounded-xl border bg-white dark:bg-gray-800 p-5 shadow-sm transition-all ${
         stale
-          ? 'border-gray-200 opacity-50'
-          : 'border-gray-200 hover:shadow-md'
+          ? 'border-gray-200 dark:border-gray-700 opacity-50'
+          : 'border-gray-200 dark:border-gray-700 hover:shadow-md dark:hover:shadow-gray-900/50'
       }`}
     >
       <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <span className="text-lg font-bold text-gray-900">
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-lg font-bold text-gray-900 dark:text-gray-100">
             {formatPair(setup.pair)}
           </span>
           <span
             className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${directionBadge}`}
           >
-            {setup.direction === 'buy' ? '▲ LONG' : '▼ SHORT'}
+            {setup.direction === 'buy' ? '\u25B2 LONG' : '\u25BC SHORT'}
           </span>
-          <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+          <span className="rounded-md bg-gray-100 dark:bg-gray-700 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300">
             {setup.timeframe || '—'}
           </span>
           {stale && (
-            <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+            <span className="rounded-md bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
               Stale
             </span>
           )}
         </div>
-        <span className="text-xs text-gray-400 whitespace-nowrap ml-2">
+        <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap ml-2">
           {timeAgo(setup.generated_at)}
         </span>
       </div>
 
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-4">
         <div>
-          <span className="text-gray-500 text-xs uppercase tracking-wider">Entry</span>
-          <p className="font-mono font-semibold text-gray-900">{formatPrice(setup.entry_price)}</p>
+          <span className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Entry</span>
+          <p className="font-mono font-semibold text-gray-900 dark:text-gray-100">{formatPrice(setup.entry_price)}</p>
         </div>
         <div>
-          <span className="text-gray-500 text-xs uppercase tracking-wider">Stop Loss</span>
-          <p className="font-mono font-semibold text-red-600">{formatPrice(setup.stop_loss)}</p>
+          <span className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Stop Loss</span>
+          <p className="font-mono font-semibold text-red-600 dark:text-red-300">{formatPrice(setup.stop_loss)}</p>
         </div>
         <div>
-          <span className="text-gray-500 text-xs uppercase tracking-wider">Take Profit</span>
-          <p className="font-mono font-semibold text-green-600">{formatPrice(setup.take_profit)}</p>
+          <span className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Take Profit</span>
+          <p className="font-mono font-semibold text-green-600 dark:text-green-400">{formatPrice(setup.take_profit)}</p>
         </div>
         <div>
-          <span className="text-gray-500 text-xs uppercase tracking-wider">R:R Ratio</span>
-          <p className="font-mono font-semibold text-gray-900">
+          <span className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">R:R Ratio</span>
+          <p className="font-mono font-semibold text-gray-900 dark:text-gray-100">
             1:{setup.rr_ratio ? setup.rr_ratio.toFixed(2) : '—'}
           </p>
         </div>
       </div>
 
-      <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3">
+      <div className="mt-4 flex items-center justify-between border-t border-gray-100 dark:border-gray-700 pt-3">
         <div className="flex items-center gap-2">
-          <div className="h-2 w-full rounded-full bg-gray-200 overflow-hidden" style={{ width: '80px' }}>
+          <div className="h-2 w-full rounded-full bg-gray-300 dark:bg-gray-600 overflow-hidden" style={{ width: '80px' }}>
             <div
               className={`h-full rounded-full ${
                 setup.confidence >= 0.7
@@ -161,11 +161,11 @@ function SetupCard({ setup, stale }) {
               style={{ width: `${Math.round(setup.confidence * 100)}%` }}
             />
           </div>
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-gray-500 dark:text-gray-400">
             {(setup.confidence * 100).toFixed(1)}% confidence
           </span>
         </div>
-        <span className="text-xs text-gray-400" title={formatTimestamp(setup.generated_at)}>
+        <span className="text-xs text-gray-500 dark:text-gray-400" title={formatTimestamp(setup.generated_at)}>
           {formatTimestamp(setup.generated_at)}
         </span>
       </div>
@@ -260,22 +260,18 @@ export default function LiveSetupsPage() {
   const displayedSetups = useMemo(() => {
     let result = [...setups];
 
-    // Filter by pair
     if (filterPair) {
       result = result.filter((s) => s.pair === filterPair);
     }
 
-    // Filter by direction
     if (filterDirection) {
       result = result.filter((s) => s.direction === filterDirection);
     }
 
-    // Hide stale
     if (hideStale) {
       result = result.filter((s) => !isStale(s.generated_at, staleThreshold));
     }
 
-    // Sort
     result.sort((a, b) => {
       let valA = a[sortField];
       let valB = b[sortField];
@@ -313,15 +309,15 @@ export default function LiveSetupsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Live Setups</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Live Setups</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Auto-detected trade setups from the latest model scans across all pairs.
           </p>
         </div>
         <button
           onClick={handleRefresh}
           disabled={loading}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 dark:bg-primary-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-700 dark:hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
         >
           {loading ? (
             <>
@@ -351,18 +347,18 @@ export default function LiveSetupsPage() {
       </div>
 
       {/* Filters & Controls */}
-      <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm mb-6">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm mb-6">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {/* Pair filter */}
           <div>
-            <label htmlFor="filter-pair" className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">
+            <label htmlFor="filter-pair" className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
               Pair
             </label>
             <select
               id="filter-pair"
               value={filterPair}
               onChange={(e) => setFilterPair(e.target.value)}
-              className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 focus:outline-none"
+              className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-200 dark:focus:ring-primary-800 focus:outline-none"
             >
               <option value="">All Pairs</option>
               {pairs.map((pair) => (
@@ -375,14 +371,14 @@ export default function LiveSetupsPage() {
 
           {/* Direction filter */}
           <div>
-            <label htmlFor="filter-direction" className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">
+            <label htmlFor="filter-direction" className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
               Direction
             </label>
             <select
               id="filter-direction"
               value={filterDirection}
               onChange={(e) => setFilterDirection(e.target.value)}
-              className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 focus:outline-none"
+              className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-200 dark:focus:ring-primary-800 focus:outline-none"
             >
               {DIRECTION_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -394,14 +390,14 @@ export default function LiveSetupsPage() {
 
           {/* Timeframe filter */}
           <div>
-            <label htmlFor="filter-timeframe" className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">
+            <label htmlFor="filter-timeframe" className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
               Timeframe
             </label>
             <select
               id="filter-timeframe"
               value={filterTimeframe}
               onChange={(e) => setFilterTimeframe(e.target.value)}
-              className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 focus:outline-none"
+              className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-200 dark:focus:ring-primary-800 focus:outline-none"
             >
               {TIMEFRAME_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -413,7 +409,7 @@ export default function LiveSetupsPage() {
 
           {/* Sort */}
           <div>
-            <label htmlFor="sort-field" className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">
+            <label htmlFor="sort-field" className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
               Sort By
             </label>
             <div className="flex gap-2">
@@ -424,7 +420,7 @@ export default function LiveSetupsPage() {
                   setSortField(e.target.value);
                   if (e.target.value !== sortField) setSortDir('desc');
                 }}
-                className="block flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 focus:outline-none"
+                className="block flex-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-200 dark:focus:ring-primary-800 focus:outline-none"
               >
                 {SORT_FIELDS.map((f) => (
                   <option key={f.value} value={f.value}>
@@ -434,8 +430,8 @@ export default function LiveSetupsPage() {
               </select>
               <button
                 onClick={() => setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'))}
-                className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
-                title={sortDir === 'desc' ? 'Sort ascending' : 'Sort descending'}
+                className="inline-flex items-center justify-center rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
+                aria-label={sortDir === 'desc' ? 'Sort ascending' : 'Sort descending'}
               >
                 {sortDir === 'desc' ? (
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -452,19 +448,19 @@ export default function LiveSetupsPage() {
         </div>
 
         {/* Auto-refresh & stale controls */}
-        <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap items-center gap-x-6 gap-y-3">
-          <label className="inline-flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex flex-wrap items-center gap-x-6 gap-y-3">
+          <label className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 cursor-pointer">
             <input
               type="checkbox"
               checked={autoRefresh}
               onChange={(e) => setAutoRefresh(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 dark:bg-gray-700"
             />
             Auto-refresh
           </label>
 
           {autoRefresh && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
+            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
               <span>every</span>
               <input
                 type="number"
@@ -472,13 +468,13 @@ export default function LiveSetupsPage() {
                 max={600}
                 value={refreshInterval}
                 onChange={(e) => setRefreshInterval(Math.max(10, Number(e.target.value) || 60))}
-                className="w-16 rounded-lg border border-gray-300 px-2 py-1 text-sm text-center focus:border-primary-500 focus:ring-1 focus:ring-primary-200 focus:outline-none"
+                className="w-16 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1 text-sm text-center focus:border-primary-500 focus:ring-1 focus:ring-primary-200 dark:focus:ring-primary-800 focus:outline-none"
               />
               <span>seconds</span>
             </div>
           )}
 
-          <div className="flex items-center gap-2 text-sm text-gray-600">
+          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
             <span>Stale after</span>
             <input
               type="number"
@@ -486,17 +482,17 @@ export default function LiveSetupsPage() {
               max={1440}
               value={staleThreshold}
               onChange={(e) => setStaleThreshold(Math.max(5, Number(e.target.value) || 60))}
-              className="w-16 rounded-lg border border-gray-300 px-2 py-1 text-sm text-center focus:border-primary-500 focus:ring-1 focus:ring-primary-200 focus:outline-none"
+              className="w-16 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1 text-sm text-center focus:border-primary-500 focus:ring-1 focus:ring-primary-200 dark:focus:ring-primary-800 focus:outline-none"
             />
             <span>min</span>
           </div>
 
-          <label className="inline-flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+          <label className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 cursor-pointer">
             <input
               type="checkbox"
               checked={hideStale}
               onChange={(e) => setHideStale(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 dark:bg-gray-700"
             />
             Hide stale setups
           </label>
@@ -505,7 +501,7 @@ export default function LiveSetupsPage() {
 
       {/* Status bar */}
       {(lastRefreshed || displayedSetups.length > 0) && (
-        <div className="flex items-center justify-between text-xs text-gray-400 mb-4 px-1">
+        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-4 px-1">
           <span>
             {displayedSetups.length} setup{displayedSetups.length !== 1 ? 's' : ''} shown
             {setups.length !== displayedSetups.length && (
@@ -517,7 +513,7 @@ export default function LiveSetupsPage() {
               Last refreshed: {lastRefreshed}
               {autoRefresh && (
                 <span className="ml-1 inline-flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" aria-hidden="true" />
                   Live
                 </span>
               )}
@@ -552,11 +548,11 @@ export default function LiveSetupsPage() {
       )}
 
       {/* Disclaimer */}
-      <div className="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-4">
+      <div className="mt-8 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4">
         <div className="flex items-start gap-3">
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5 text-amber-500 mt-0.5 shrink-0"
+            className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0"
             fill="none"
             viewBox="0 0 24 24"
             strokeWidth={1.5}
@@ -568,7 +564,7 @@ export default function LiveSetupsPage() {
               d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"
             />
           </svg>
-          <p className="text-xs text-amber-800">
+          <p className="text-xs text-amber-800 dark:text-amber-300">
             Trade setups shown here are generated by ML models and are for informational purposes only.
             They do not constitute financial advice. Always perform your own analysis and risk assessment
             before placing any trades.
