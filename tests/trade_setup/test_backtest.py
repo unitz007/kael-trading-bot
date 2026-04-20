@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from kael_trading_bot.trade_setup.backtest import (
+from kael_trading_bot.trade_setup_pkg.backtest import (
     MIN_RR_RATIO,
     _compute_atr,
     _backtest_rr,

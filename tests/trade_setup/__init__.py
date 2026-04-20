@@ -1,1 +1,1 @@
-# trade_setup tests package
+# trade_setup_pkg tests package

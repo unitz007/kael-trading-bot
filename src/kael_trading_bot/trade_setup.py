@@ -12,7 +12,7 @@ from dataclasses import dataclass, asdict, field
 import numpy as np
 import pandas as pd
 
-from kael_trading_bot.trade_setup.backtest import select_optimal_rr_ratio
+from kael_trading_bot.trade_setup_pkg.backtest import select_optimal_rr_ratio
 
 logger = logging.getLogger(__name__)
 
