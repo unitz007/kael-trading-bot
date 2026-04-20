@@ -1,6 +1,6 @@
 """Tests for the REST API layer.
 
-All endpoints are tested against a lightweight Flask test client.
+All endpoints are tested against the TestClient.
 Business-logic modules (ingestion, features, training) are mocked so
 the tests exercise only the HTTP routing, request validation, response
 formatting, and error-handling of the API layer.
@@ -21,14 +21,14 @@ AC#11 – single-command entry point  →  main.py `serve` subcommand (integrati
 
 from __future__ import annotations
 
-import json
-from datetime import datetime, timezone
-from io import StringIO
 from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pandas as pd
 import pytest
+from fastapi.testclient import TestClient
+
+
 
 from kael_trading_bot.api.app import create_app
 
@@ -40,16 +40,14 @@ from kael_trading_bot.api.app import create_app
 
 @pytest.fixture()
 def app():
-    """Create a Flask application configured for testing."""
-    application = create_app()
-    application.config["TESTING"] = True
-    return application
+    """Create a FastAPI application configured for testing."""
+    return create_app()
 
 
 @pytest.fixture()
 def client(app):
-    """Flask test client."""
-    return app.test_client()
+    """FastAPI test client."""
+    return TestClient(app)
 
 
 @pytest.fixture()
@@ -121,30 +119,30 @@ class TestListPairs:
 
     def test_list_pairs_returns_json(self, client):
         resp = client.get("/api/v1/pairs")
-        data = resp.get_json()
+        data = resp.json()
         assert data is not None
         assert isinstance(data, dict)
 
     def test_list_pairs_contains_pairs_key(self, client):
         resp = client.get("/api/v1/pairs")
-        data = resp.get_json()
+        data = resp.json()
         assert "pairs" in data
         assert isinstance(data["pairs"], list)
 
     def test_list_pairs_contains_count(self, client):
         resp = client.get("/api/v1/pairs")
-        data = resp.get_json()
+        data = resp.json()
         assert "count" in data
         assert data["count"] == len(data["pairs"])
 
     def test_list_pairs_has_known_pairs(self, client):
         resp = client.get("/api/v1/pairs")
-        data = resp.get_json()
+        data = resp.json()
         assert "EURUSD=X" in data["pairs"]
 
     def test_list_pairs_cors_headers(self, client):
         resp = client.get("/api/v1/pairs")
-        assert resp.headers.get("Access-Control-Allow-Origin") == "*"
+        assert resp.headers.get("access-control-allow-origin") == "*"
 
 
 # ---------------------------------------------------------------------------
@@ -158,7 +156,7 @@ class TestGetHistory:
     def test_history_unsupported_pair_404(self, client):
         resp = client.get("/api/v1/pairs/INVALIDPAIR/history")
         assert resp.status_code == 404
-        data = resp.get_json()
+        data = resp.json()
         assert "error" in data
         assert "INVALIDPAIR" in data["error"]
 
@@ -170,7 +168,7 @@ class TestGetHistory:
 
         resp = client.get("/api/v1/pairs/EURUSD=X/history")
         assert resp.status_code == 200
-        data = resp.get_json()
+        data = resp.json()
         assert data["pair"] == "EURUSD=X"
         assert data["rows"] == len(sample_ohlcv_df)
         assert isinstance(data["data"], list)
@@ -183,7 +181,7 @@ class TestGetHistory:
         mock_fetcher_cls.return_value = mock_fetcher
 
         resp = client.get("/api/v1/pairs/EURUSD=X/history")
-        data = resp.get_json()
+        data = resp.json()
         first_row = data["data"][0]
         for field in ("Date", "Open", "High", "Low", "Close", "Volume"):
             assert field in first_row, f"Missing {field} in response"
@@ -197,7 +195,7 @@ class TestGetHistory:
 
         resp = client.get("/api/v1/pairs/EURUSD/history")
         assert resp.status_code == 200
-        data = resp.get_json()
+        data = resp.json()
         assert data["pair"] == "EURUSD=X"
 
     @patch("kael_trading_bot.api.app.ForexDataFetcher")
@@ -219,8 +217,9 @@ class TestGetHistory:
         assert resp.status_code == 500
 
     def test_history_options_preflight(self, client):
-        resp = client.open("/api/v1/pairs/EURUSD=X/history", method="OPTIONS")
-        assert resp.status_code == 204
+        resp = client.options("/api/v1/pairs/EURUSD=X/history")
+        assert resp.status_code == 200
+        assert resp.headers.get("access-control-allow-origin") == "*"
 
 
 # ---------------------------------------------------------------------------
@@ -234,7 +233,7 @@ class TestTrainModel:
     def test_train_unsupported_pair_404(self, client):
         resp = client.post("/api/v1/pairs/INVALIDPAIR/train")
         assert resp.status_code == 404
-        data = resp.get_json()
+        data = resp.json()
         assert "error" in data
 
     @patch("kael_trading_bot.api.app.TrainingPipeline")
@@ -265,7 +264,7 @@ class TestTrainModel:
 
         resp = client.post("/api/v1/pairs/EURUSD=X/train")
         assert resp.status_code == 200
-        data = resp.get_json()
+        data = resp.json()
         assert data["pair"] == "EURUSD=X"
         assert data["status"] == "completed"
         assert data["model_name"] == "eurusd_x"
@@ -291,7 +290,7 @@ class TestTrainModel:
 
         resp = client.post("/api/v1/pairs/EURUSD=X/train")
         assert resp.status_code == 400
-        data = resp.get_json()
+        data = resp.json()
         assert "error" in data
         assert "target_direction_1" in data["error"]
 
@@ -321,7 +320,7 @@ class TestTrainModel:
 
         resp = client.post("/api/v1/pairs/EURUSD/train")
         assert resp.status_code == 200
-        data = resp.get_json()
+        data = resp.json()
         assert data["pair"] == "EURUSD=X"
 
     @patch("kael_trading_bot.api.app.TrainingPipeline")
@@ -410,7 +409,7 @@ class TestGetPredictions:
 
             resp = client.get("/api/v1/pairs/EURUSD=X/predict")
             assert resp.status_code == 404
-            data = resp.get_json()
+            data = resp.json()
             assert "error" in data
             assert "Train a model first" in data["error"]
 
@@ -451,7 +450,7 @@ class TestGetPredictions:
 
         resp = client.get("/api/v1/pairs/EURUSD=X/predict")
         assert resp.status_code == 200
-        data = resp.get_json()
+        data = resp.json()
         assert data["pair"] == "EURUSD=X"
         assert data["model_name"] == "eurusd_x"
         assert data["model_version"] == "v20240101T000000"
@@ -477,7 +476,7 @@ class TestGetPredictions:
 
         resp = client.get("/api/v1/pairs/EURUSD=X/predict")
         assert resp.status_code == 400
-        data = resp.get_json()
+        data = resp.json()
         assert "no feature names" in data["error"]
 
     @patch("kael_trading_bot.api.app.build_feature_matrix")
@@ -508,7 +507,7 @@ class TestGetPredictions:
 
         resp = client.get("/api/v1/pairs/EURUSD=X/predict")
         assert resp.status_code == 400
-        data = resp.get_json()
+        data = resp.json()
         assert "Missing features" in data["error"]
 
     @patch("kael_trading_bot.api.app.ModelPersistence")
@@ -537,7 +536,7 @@ class TestListModels:
 
             resp = client.get("/api/v1/models")
             assert resp.status_code == 200
-            data = resp.get_json()
+            data = resp.json()
             assert data["models"] == []
             assert data["count"] == 0
 
@@ -557,7 +556,7 @@ class TestListModels:
 
             resp = client.get("/api/v1/models")
             assert resp.status_code == 200
-            data = resp.get_json()
+            data = resp.json()
             assert data["count"] == 1
             model_info = data["models"][0]
             assert model_info["model_name"] == "eurusd_x"
@@ -580,7 +579,7 @@ class TestListModels:
 
             resp = client.get("/api/v1/models")
             assert resp.status_code == 200
-            data = resp.get_json()
+            data = resp.json()
             assert data["count"] == 1
 
     def test_list_models_internal_error_500(self, client):
@@ -601,20 +600,26 @@ class TestListModels:
 class TestServeCommand:
     """Tests for the `serve` CLI subcommand."""
 
-    @patch("kael_trading_bot.api.app.Flask.run")
-    def test_serve_starts_flask(self, mock_run):
-        """Verify that cmd_serve calls app.run with the configured port."""
+    @patch("main.uvicorn.run")
+    def test_serve_starts_uvicorn(self, mock_run):
+        """Verify that cmd_serve calls uvicorn.run with the configured port."""
         from main import cmd_serve
 
         cmd_serve(port=8080)
-        mock_run.assert_called_once_with(host="0.0.0.0", port=8080, debug=False)
+        mock_run.assert_called_once()
+        call_kwargs = mock_run.call_args
+        assert call_kwargs[0][0] is not None  # app object
+        assert call_kwargs[1]["host"] == "0.0.0.0"
+        assert call_kwargs[1]["port"] == 8080
 
-    @patch("kael_trading_bot.api.app.Flask.run")
+    @patch("main.uvicorn.run")
     def test_serve_default_port(self, mock_run):
         from main import cmd_serve
 
         cmd_serve(port=5000)
-        mock_run.assert_called_once_with(host="0.0.0.0", port=5000, debug=False)
+        mock_run.assert_called_once()
+        call_kwargs = mock_run.call_args
+        assert call_kwargs[1]["port"] == 5000
 
 
 # ---------------------------------------------------------------------------
