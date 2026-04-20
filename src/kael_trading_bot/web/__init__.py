@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 """Kael Trading Bot — Web UI and REST API.
 
 Provides a FastAPI application that serves:
@@ -14,7 +17,6 @@ Creates and configures the Flask app with blueprint registration.
 Run with: ``python -m kael_trading_bot.web``
 """
 
-from __future__ import annotations
 
 from flask import Flask
 
