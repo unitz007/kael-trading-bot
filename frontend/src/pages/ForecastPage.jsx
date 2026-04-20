@@ -28,9 +28,14 @@ function formatDate(dateStr) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+function isDarkMode() {
+  return document.documentElement.classList.contains('dark');
+}
+
 function drawChart(canvas, data) {
   if (!canvas || !data) return;
 
+  const dark = isDarkMode();
   const historicalData = data.historical_data || data.historicalData || [];
   const forecastData = data.forecast || [];
 
@@ -49,8 +54,28 @@ function drawChart(canvas, data) {
   const chartW = W - PAD.left - PAD.right;
   const chartH = H - PAD.top - PAD.bottom;
 
+  // Theme-aware colors
+  const colors = {
+    bg: dark ? '#111827' : '#ffffff',
+    histRegion: dark ? 'rgba(30, 58, 138, 0.15)' : 'rgba(239, 246, 255, 0.4)',
+    forecastRegion: dark ? 'rgba(120, 53, 15, 0.15)' : 'rgba(255, 247, 237, 0.5)',
+    boundaryLine: dark ? '#4b5563' : '#9ca3af',
+    gridLine: dark ? '#374151' : '#f3f4f6',
+    gridText: dark ? '#9ca3af' : '#9ca3af',
+    histLine: '#2563eb',
+    forecastLine: '#f97316',
+    confidenceBand: dark ? 'rgba(251, 146, 60, 0.15)' : 'rgba(251, 146, 60, 0.12)',
+    upperLine: 'rgba(251, 146, 60, 0.3)',
+    dotStroke: dark ? '#111827' : '#ffffff',
+    labelText: dark ? '#d1d5db' : '#6b7280',
+  };
+
   // Clear
   ctx.clearRect(0, 0, W, H);
+
+  // Background
+  ctx.fillStyle = colors.bg;
+  ctx.fillRect(0, 0, W, H);
 
   // Combine all data points
   const allPoints = [
@@ -70,27 +95,23 @@ function drawChart(canvas, data) {
   const xScale = (date) => PAD.left + ((date.getTime() - minDate) / (maxDate - minDate)) * chartW;
   const yScale = (price) => PAD.top + chartH - ((price - minPrice) / (maxPrice - minPrice)) * chartH;
 
-  // Background
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, W, H);
-
   // Forecast background shading
   const boundaryIdx = historicalData.length;
   if (boundaryIdx > 0 && boundaryIdx < allPoints.length) {
     const boundaryX = xScale(allPoints[boundaryIdx].date);
 
-    // Historical region - subtle blue tint
-    ctx.fillStyle = 'rgba(239, 246, 255, 0.4)';
+    // Historical region
+    ctx.fillStyle = colors.histRegion;
     ctx.fillRect(PAD.left, PAD.top, boundaryX - PAD.left, chartH);
 
-    // Forecast region - subtle orange tint
-    ctx.fillStyle = 'rgba(255, 247, 237, 0.5)';
+    // Forecast region
+    ctx.fillStyle = colors.forecastRegion;
     ctx.fillRect(boundaryX, PAD.top, W - PAD.right - boundaryX, chartH);
 
     // Vertical boundary line
     ctx.beginPath();
     ctx.setLineDash([6, 4]);
-    ctx.strokeStyle = '#9ca3af';
+    ctx.strokeStyle = colors.boundaryLine;
     ctx.lineWidth = 1.5;
     ctx.moveTo(boundaryX, PAD.top);
     ctx.lineTo(boundaryX, PAD.top + chartH);
@@ -98,7 +119,7 @@ function drawChart(canvas, data) {
     ctx.setLineDash([]);
 
     // Boundary label
-    ctx.fillStyle = '#6b7280';
+    ctx.fillStyle = colors.labelText;
     ctx.font = '11px Inter, system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('Forecast →', boundaryX + (W - PAD.right - boundaryX) / 2, PAD.top - 10);
@@ -106,7 +127,7 @@ function drawChart(canvas, data) {
   }
 
   // Grid lines
-  ctx.strokeStyle = '#f3f4f6';
+  ctx.strokeStyle = colors.gridLine;
   ctx.lineWidth = 1;
   const numGridLines = 5;
   for (let i = 0; i <= numGridLines; i++) {
@@ -118,7 +139,7 @@ function drawChart(canvas, data) {
 
     // Price label
     const price = maxPrice - ((maxPrice - minPrice) / numGridLines) * i;
-    ctx.fillStyle = '#9ca3af';
+    ctx.fillStyle = colors.gridText;
     ctx.font = '10px Inter, system-ui, sans-serif';
     ctx.textAlign = 'left';
     ctx.fillText(price.toFixed(4), W - PAD.right + 8, y + 4);
@@ -139,14 +160,14 @@ function drawChart(canvas, data) {
       ctx.lineTo(x, y);
     }
     ctx.closePath();
-    ctx.fillStyle = 'rgba(251, 146, 60, 0.12)';
+    ctx.fillStyle = colors.confidenceBand;
     ctx.fill();
   }
 
   // Historical price line
   if (historicalData.length > 1) {
     ctx.beginPath();
-    ctx.strokeStyle = '#2563eb';
+    ctx.strokeStyle = colors.histLine;
     ctx.lineWidth = 2;
     ctx.lineJoin = 'round';
     historicalData.forEach((d, i) => {
@@ -161,7 +182,7 @@ function drawChart(canvas, data) {
   // Forecast price line
   if (forecastData.length > 0) {
     ctx.beginPath();
-    ctx.strokeStyle = '#f97316';
+    ctx.strokeStyle = colors.forecastLine;
     ctx.lineWidth = 2.5;
     ctx.lineJoin = 'round';
     ctx.setLineDash([5, 3]);
@@ -188,7 +209,7 @@ function drawChart(canvas, data) {
 
     // Upper bound line
     ctx.beginPath();
-    ctx.strokeStyle = 'rgba(251, 146, 60, 0.3)';
+    ctx.strokeStyle = colors.upperLine;
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 3]);
     forecastData.forEach((p, i) => {
@@ -216,9 +237,9 @@ function drawChart(canvas, data) {
     const last = historicalData[historicalData.length - 1];
     ctx.beginPath();
     ctx.arc(xScale(new Date(last.date)), yScale(last.close), 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#2563eb';
+    ctx.fillStyle = colors.histLine;
     ctx.fill();
-    ctx.strokeStyle = '#ffffff';
+    ctx.strokeStyle = colors.dotStroke;
     ctx.lineWidth = 2;
     ctx.stroke();
   }
@@ -227,15 +248,15 @@ function drawChart(canvas, data) {
     const last = forecastData[forecastData.length - 1];
     ctx.beginPath();
     ctx.arc(xScale(new Date(last.date)), yScale(last.predicted_price), 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#f97316';
+    ctx.fillStyle = colors.forecastLine;
     ctx.fill();
-    ctx.strokeStyle = '#ffffff';
+    ctx.strokeStyle = colors.dotStroke;
     ctx.lineWidth = 2;
     ctx.stroke();
   }
 
   // Date labels on x-axis
-  ctx.fillStyle = '#9ca3af';
+  ctx.fillStyle = colors.gridText;
   ctx.font = '10px Inter, system-ui, sans-serif';
   ctx.textAlign = 'center';
   const dateStep = Math.max(1, Math.floor(allPoints.length / 8));
@@ -251,7 +272,7 @@ function drawChart(canvas, data) {
   ctx.save();
   ctx.translate(12, PAD.top + chartH / 2);
   ctx.rotate(-Math.PI / 2);
-  ctx.fillStyle = '#9ca3af';
+  ctx.fillStyle = colors.gridText;
   ctx.font = '11px Inter, system-ui, sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('Price', 0, 0);
@@ -307,7 +328,7 @@ export default function ForecastPage() {
     }
   }, [forecast]);
 
-  // Redraw chart on resize
+  // Redraw chart on resize or theme change
   useEffect(() => {
     function handleResize() {
       if (forecast && canvasRef.current) {
@@ -316,6 +337,17 @@ export default function ForecastPage() {
     }
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, [forecast]);
+
+  // Redraw chart when theme changes
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      if (forecast && canvasRef.current) {
+        drawChart(canvasRef.current, forecast);
+      }
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
   }, [forecast]);
 
   const fetchForecast = useCallback(async () => {
@@ -340,18 +372,18 @@ export default function ForecastPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Price Forecast</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Price Forecast</h1>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Generate future price forecasts using the trained ML model for a selected forex pair.
         </p>
       </div>
 
       {/* Controls */}
-      <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm mb-6">
+      <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm mb-6 dark:border-gray-700 dark:bg-gray-800">
         <div className="flex flex-col gap-4">
           {/* Pair Selection */}
           <div>
-            <label htmlFor="forecast-pair-select" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="forecast-pair-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Select Forex Pair
             </label>
             <select
@@ -363,7 +395,7 @@ export default function ForecastPage() {
                 setError(null);
               }}
               disabled={loading}
-              className="block w-full max-w-xs rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 focus:outline-none disabled:opacity-50"
+              className="block w-full max-w-xs rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 focus:outline-none disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
             >
               {pairs.map((pair) => (
                 <option key={pair} value={pair}>
@@ -375,7 +407,7 @@ export default function ForecastPage() {
 
           {/* Horizon Selection */}
           <div>
-            <label htmlFor="forecast-horizon" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="forecast-horizon" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Forecast Horizon
             </label>
             <div className="flex flex-wrap gap-2">
@@ -391,7 +423,7 @@ export default function ForecastPage() {
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     horizon === opt.value
                       ? 'bg-primary-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                   }`}
                 >
                   {opt.label}
@@ -402,7 +434,7 @@ export default function ForecastPage() {
 
           {/* Time Frame Selection */}
           <div>
-            <label htmlFor="forecast-timeframe" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="forecast-timeframe" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Time Frame
             </label>
             <select
@@ -414,7 +446,7 @@ export default function ForecastPage() {
                 setError(null);
               }}
               disabled={loading}
-              className="block w-full max-w-xs rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 focus:outline-none disabled:opacity-50"
+              className="block w-full max-w-xs rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 focus:outline-none disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
             >
               {TIMEFRAME_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -446,10 +478,10 @@ export default function ForecastPage() {
 
       {/* Loading */}
       {loading && (
-        <div className="rounded-xl border border-blue-200 bg-blue-50 p-5 mb-6">
+        <div className="rounded-xl border border-blue-200 bg-blue-50 p-5 mb-6 dark:border-blue-800/50 dark:bg-blue-900/20">
           <div className="flex items-center gap-3">
             <Spinner className="py-0" />
-            <p className="text-sm text-blue-700">
+            <p className="text-sm text-blue-700 dark:text-blue-400">
               Generating {horizon}-day forecast for {formatPair(selectedPair)}...
             </p>
           </div>
@@ -469,15 +501,15 @@ export default function ForecastPage() {
         <>
           {/* Summary Cards */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
-            <div className="rounded-xl bg-gray-50 p-4">
-              <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Forecast Direction</p>
+            <div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-700/50">
+              <p className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Forecast Direction</p>
               <div className="mt-1 flex items-center gap-2">
                 <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
                   directionColor === 'green'
-                    ? 'bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20'
+                    ? 'bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-900/30 dark:text-green-400 dark:ring-green-800/40'
                     : directionColor === 'red'
-                      ? 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20'
-                      : 'bg-gray-100 text-gray-600 ring-1 ring-inset ring-gray-500/20'
+                      ? 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20 dark:bg-red-900/30 dark:text-red-400 dark:ring-red-800/40'
+                      : 'bg-gray-100 text-gray-600 ring-1 ring-inset ring-gray-500/20 dark:bg-gray-600 dark:text-gray-300 dark:ring-gray-500/30'
                 }`}>
                   <span className={`h-1.5 w-1.5 rounded-full ${
                     directionColor === 'green' ? 'bg-green-500' : directionColor === 'red' ? 'bg-red-500' : 'bg-gray-400'
@@ -487,56 +519,56 @@ export default function ForecastPage() {
               </div>
             </div>
 
-            <div className="rounded-xl bg-gray-50 p-4">
-              <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Current Price</p>
-              <p className="mt-1 text-xl font-bold text-gray-900 font-mono">
+            <div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-700/50">
+              <p className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Current Price</p>
+              <p className="mt-1 text-xl font-bold text-gray-900 dark:text-gray-100 font-mono">
                 {forecast.last_historical_price?.toFixed(4)}
               </p>
             </div>
 
-            <div className="rounded-xl bg-gray-50 p-4">
-              <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Forecast Period</p>
-              <p className="mt-1 text-xl font-bold text-gray-900">
+            <div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-700/50">
+              <p className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Forecast Period</p>
+              <p className="mt-1 text-xl font-bold text-gray-900 dark:text-gray-100">
                 {forecast.forecast_horizon ?? horizon} days
               </p>
             </div>
 
-            <div className="rounded-xl bg-gray-50 p-4">
-              <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Model Confidence</p>
-              <p className="mt-1 text-xl font-bold text-gray-900">
+            <div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-700/50">
+              <p className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Model Confidence</p>
+              <p className="mt-1 text-xl font-bold text-gray-900 dark:text-gray-100">
                 {forecast.confidence != null ? `${(forecast.confidence * 100).toFixed(1)}%` : '—'}
               </p>
             </div>
           </div>
 
           {/* Model Info */}
-          <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm mb-6">
-            <h2 className="text-sm font-semibold text-gray-900 mb-3">Model Information</h2>
+          <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm mb-6 dark:border-gray-700 dark:bg-gray-800">
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Model Information</h2>
             <div className="grid gap-3 sm:grid-cols-3 text-sm">
               <div>
-                <span className="text-gray-500">Pair:</span>{' '}
-                <span className="font-medium">{forecast.pair ? formatPair(forecast.pair) : '—'}</span>
+                <span className="text-gray-500 dark:text-gray-400">Pair:</span>{' '}
+                <span className="font-medium dark:text-gray-100">{forecast.pair ? formatPair(forecast.pair) : '—'}</span>
               </div>
               <div>
-                <span className="text-gray-500">Model:</span>{' '}
-                <span className="font-medium font-mono text-xs">{forecast.model_name || 'Unknown'} ({forecast.model_version || '—'})</span>
+                <span className="text-gray-500 dark:text-gray-400">Model:</span>{' '}
+                <span className="font-medium font-mono text-xs dark:text-gray-100">{forecast.model_name || 'Unknown'} ({forecast.model_version || '—'})</span>
               </div>
               {forecast.trained_at && (
                 <div>
-                  <span className="text-gray-500">Trained At:</span>{' '}
-                  <span className="font-medium">{new Date(forecast.trained_at).toLocaleString()}</span>
+                  <span className="text-gray-500 dark:text-gray-400">Trained At:</span>{' '}
+                  <span className="font-medium dark:text-gray-100">{new Date(forecast.trained_at).toLocaleString()}</span>
                 </div>
               )}
             </div>
           </div>
 
           {/* Chart */}
-          <div className="rounded-xl border border-gray-200 bg-white shadow-sm mb-6">
-            <div className="px-5 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <h2 className="text-sm font-semibold text-gray-900">
+          <div className="rounded-xl border border-gray-200 bg-white shadow-sm mb-6 dark:border-gray-700 dark:bg-gray-800">
+            <div className="px-5 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 dark:border-gray-700">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                 Price Forecast Chart
               </h2>
-              <div className="flex items-center gap-4 text-xs text-gray-500">
+              <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
                 <span className="flex items-center gap-1.5">
                   <span className="h-0.5 w-4 bg-blue-600 inline-block" />
                   Historical
@@ -546,7 +578,7 @@ export default function ForecastPage() {
                   Forecast
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="h-2 w-4 bg-orange-100 rounded inline-block border border-orange-200" />
+                  <span className="h-2 w-4 bg-orange-100 rounded inline-block border border-orange-200 dark:bg-orange-900/30 dark:border-orange-800/50" />
                   Confidence Band
                 </span>
               </div>
@@ -561,59 +593,59 @@ export default function ForecastPage() {
 
           {/* Forecast Table */}
           {forecast.forecast?.length > 0 && (
-            <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-200">
-                <h2 className="text-sm font-semibold text-gray-900">
+            <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden dark:border-gray-700 dark:bg-gray-800">
+              <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                   Forecast Details
-                  <span className="ml-2 text-xs font-normal text-gray-500">
+                  <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">
                     {forecast.forecast.length} periods
                   </span>
                 </h2>
               </div>
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-700/50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Date
                       </th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Predicted Price
                       </th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Upper Bound
                       </th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Lower Bound
                       </th>
-                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Direction
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                     {forecast.forecast.map((point, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
+                      <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap">
                           {point.date}
                         </td>
-                        <td className="px-4 py-3 text-sm text-right text-gray-900 font-mono">
+                        <td className="px-4 py-3 text-sm text-right text-gray-900 dark:text-gray-100 font-mono">
                           {point.predicted_price != null ? point.predicted_price.toFixed(4) : '—'}
                         </td>
-                        <td className="px-4 py-3 text-sm text-right text-green-700 font-mono">
+                        <td className="px-4 py-3 text-sm text-right text-green-700 dark:text-green-400 font-mono">
                           {point.upper_bound != null ? point.upper_bound.toFixed(4) : '—'}
                         </td>
-                        <td className="px-4 py-3 text-sm text-right text-red-700 font-mono">
+                        <td className="px-4 py-3 text-sm text-right text-red-700 dark:text-red-400 font-mono">
                           {point.lower_bound != null ? point.lower_bound.toFixed(4) : '—'}
                         </td>
                         <td className="px-4 py-3 text-center whitespace-nowrap">
                           <span
                             className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
                               point.direction === 'UP'
-                                ? 'bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20'
+                                ? 'bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-900/30 dark:text-green-400 dark:ring-green-800/40'
                                 : point.direction === 'DOWN'
-                                  ? 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20'
-                                  : 'bg-gray-100 text-gray-600 ring-1 ring-inset ring-gray-500/20'
+                                  ? 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20 dark:bg-red-900/30 dark:text-red-400 dark:ring-red-800/40'
+                                  : 'bg-gray-100 text-gray-600 ring-1 ring-inset ring-gray-500/20 dark:bg-gray-600 dark:text-gray-300 dark:ring-gray-500/30'
                             }`}
                           >
                             <span
