@@ -49,6 +49,10 @@ export async function getForecast(pair, horizon = 30, timeframe = '1h') {
   return request(`/pairs/${encodeURIComponent(pair)}/forecast?horizon=${encodeURIComponent(horizon)}&timeframe=${encodeURIComponent(timeframe)}`);
 }
 
+export async function getTradeSetups(timeframe = '1h') {
+  return request(`/trade-setups?timeframe=${encodeURIComponent(timeframe)}`);
+}
+
 export async function getModels() {
   return request('/models');
 }

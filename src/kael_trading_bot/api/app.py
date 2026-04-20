@@ -765,6 +765,92 @@ def create_app() -> FastAPI:
                 content={"error": f"Internal error generating trade setup: {exc}"},
             )
 
+    @app.get("/api/v1/trade-setups")
+    def list_trade_setups(
+        timeframe: str | None = None,
+    ) -> JSONResponse | dict[str, Any]:
+        """Return trade setups for all supported pairs.
+
+        Optionally filter by *timeframe* (5m, 15m, 1h, 4h).
+        If *timeframe* is not provided the default timeframe (``1h``) is used.
+
+        For each pair the endpoint attempts to generate a trade setup using
+        the latest trained model.  Pairs without a trained model are
+        silently skipped so that partial data is still returned.
+        """
+        try:
+            tf = _validate_timeframe(timeframe)
+        except ValueError as exc:
+            return JSONResponse(
+                status_code=400,
+                content={"error": str(exc)},
+            )
+
+        persistence = ModelPersistence()
+        setups: list[dict[str, Any]] = []
+
+        for ticker in DEFAULT_FOREX_PAIRS:
+            model_name = _pair_to_model_name(ticker, tf)
+
+            try:
+                versions = persistence.list_versions(model_name)
+                if not versions:
+                    continue
+                version = versions[-1]
+            except Exception:
+                continue
+
+            try:
+                model, metadata = persistence.load(model_name, version)
+
+                if not metadata.feature_names:
+                    continue
+
+                ingestion_cfg = IngestionConfig(pairs=(ticker,))
+                fetcher = ForexDataFetcher(ingestion_cfg)
+                raw_df = fetcher.get(ticker)
+                raw_df_copy = raw_df.copy()
+                raw_df.columns = [c.lower() for c in raw_df.columns]
+                feature_df = build_feature_matrix(raw_df, config=FeatureConfig())
+
+                missing = [
+                    f for f in metadata.feature_names
+                    if f not in feature_df.columns
+                ]
+                if missing:
+                    continue
+
+                setup = generate_trade_setup(
+                    pair=ticker,
+                    model=model,
+                    metadata=metadata,
+                    feature_df=feature_df,
+                    ohlcv_df=raw_df_copy,
+                    model_name=model_name,
+                    model_version=version,
+                    timeframe=tf,
+                )
+
+                setups.append(setup.to_dict())
+
+            except Exception:
+                logger.debug(
+                    "Could not generate setup for %s (timeframe=%s)",
+                    ticker,
+                    tf,
+                )
+                continue
+
+        # Sort by generated_at descending (most recent first)
+        setups.sort(key=lambda s: s.get("generated_at", ""), reverse=True)
+
+        return {
+            "setups": setups,
+            "count": len(setups),
+            "timeframe": tf,
+            "scanned_at": datetime.now(timezone.utc).isoformat(),
+        }
+
     @app.get("/api/v1/models", response_model=None)
     def list_models() -> JSONResponse | dict[str, Any]:
         """Return a list of trained models with their metadata."""
