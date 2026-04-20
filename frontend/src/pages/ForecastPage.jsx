@@ -24,6 +24,9 @@ function formatDate(dateStr) {
 function drawChart(canvas, data) {
   if (!canvas || !data) return;
 
+  const historicalData = data.historical_data || data.historicalData || [];
+  const forecastData = data.forecast || [];
+
   const ctx = canvas.getContext('2d');
   const dpr = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
@@ -32,7 +35,6 @@ function drawChart(canvas, data) {
   canvas.height = rect.height * dpr;
   ctx.scale(dpr, dpr);
 
-  const { historicalData, forecast } = data;
   const W = rect.width;
   const H = rect.height;
   const PAD = { top: 30, right: 70, bottom: 45, left: 15 };
@@ -46,7 +48,7 @@ function drawChart(canvas, data) {
   // Combine all data points
   const allPoints = [
     ...historicalData.map((d) => ({ date: new Date(d.date), price: d.close, type: 'historical' })),
-    ...forecast.map((d) => ({ date: new Date(d.date), price: d.predicted_price, type: 'forecast', upper: d.upper_bound, lower: d.lower_bound })),
+    ...forecastData.map((d) => ({ date: new Date(d.date), price: d.predicted_price, type: 'forecast', upper: d.upper_bound, lower: d.lower_bound })),
   ];
 
   if (allPoints.length < 2) return;
@@ -116,17 +118,17 @@ function drawChart(canvas, data) {
   }
 
   // Confidence band (forecast only)
-  if (forecast.length > 1) {
+  if (forecastData.length > 1) {
     ctx.beginPath();
-    forecast.forEach((p, i) => {
+    forecastData.forEach((p, i) => {
       const x = xScale(new Date(p.date));
       const y = yScale(p.upper_bound);
       if (i === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     });
-    for (let i = forecast.length - 1; i >= 0; i--) {
-      const x = xScale(new Date(forecast[i].date));
-      const y = yScale(forecast[i].lower_bound);
+    for (let i = forecastData.length - 1; i >= 0; i--) {
+      const x = xScale(new Date(forecastData[i].date));
+      const y = yScale(forecastData[i].lower_bound);
       ctx.lineTo(x, y);
     }
     ctx.closePath();
@@ -150,25 +152,28 @@ function drawChart(canvas, data) {
   }
 
   // Forecast price line
-  if (forecast.length > 0) {
-    // Connect from last historical point to first forecast point
-    const lastHist = historicalData[historicalData.length - 1];
-    const firstForecast = forecast[0];
-
+  if (forecastData.length > 0) {
     ctx.beginPath();
     ctx.strokeStyle = '#f97316';
     ctx.lineWidth = 2.5;
     ctx.lineJoin = 'round';
     ctx.setLineDash([5, 3]);
 
-    // Start from last historical point
-    ctx.moveTo(xScale(new Date(lastHist.date)), yScale(lastHist.close));
-    ctx.lineTo(xScale(new Date(firstForecast.date)), yScale(firstForecast.predicted_price));
+    // Connect from last historical point to first forecast point (if historical data exists)
+    if (historicalData.length > 0) {
+      const lastHist = historicalData[historicalData.length - 1];
+      const firstForecast = forecastData[0];
+      ctx.moveTo(xScale(new Date(lastHist.date)), yScale(lastHist.close));
+      ctx.lineTo(xScale(new Date(firstForecast.date)), yScale(firstForecast.predicted_price));
+    } else {
+      const firstForecast = forecastData[0];
+      ctx.moveTo(xScale(new Date(firstForecast.date)), yScale(firstForecast.predicted_price));
+    }
 
     // Continue through forecast points
-    for (let i = 1; i < forecast.length; i++) {
-      const x = xScale(new Date(forecast[i].date));
-      const y = yScale(forecast[i].predicted_price);
+    for (let i = 1; i < forecastData.length; i++) {
+      const x = xScale(new Date(forecastData[i].date));
+      const y = yScale(forecastData[i].predicted_price);
       ctx.lineTo(x, y);
     }
     ctx.stroke();
@@ -179,7 +184,7 @@ function drawChart(canvas, data) {
     ctx.strokeStyle = 'rgba(251, 146, 60, 0.3)';
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 3]);
-    forecast.forEach((p, i) => {
+    forecastData.forEach((p, i) => {
       const x = xScale(new Date(p.date));
       const y = yScale(p.upper_bound);
       if (i === 0) ctx.moveTo(x, y);
@@ -189,7 +194,7 @@ function drawChart(canvas, data) {
 
     // Lower bound line
     ctx.beginPath();
-    forecast.forEach((p, i) => {
+    forecastData.forEach((p, i) => {
       const x = xScale(new Date(p.date));
       const y = yScale(p.lower_bound);
       if (i === 0) ctx.moveTo(x, y);
@@ -211,8 +216,8 @@ function drawChart(canvas, data) {
     ctx.stroke();
   }
 
-  if (forecast.length > 0) {
-    const last = forecast[forecast.length - 1];
+  if (forecastData.length > 0) {
+    const last = forecastData[forecastData.length - 1];
     ctx.beginPath();
     ctx.arc(xScale(new Date(last.date)), yScale(last.predicted_price), 4, 0, Math.PI * 2);
     ctx.fillStyle = '#f97316';
@@ -460,14 +465,14 @@ export default function ForecastPage() {
             <div className="rounded-xl bg-gray-50 p-4">
               <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Forecast Period</p>
               <p className="mt-1 text-xl font-bold text-gray-900">
-                {forecast.forecast_horizon} days
+                {forecast.forecast_horizon ?? horizon} days
               </p>
             </div>
 
             <div className="rounded-xl bg-gray-50 p-4">
               <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Model Confidence</p>
               <p className="mt-1 text-xl font-bold text-gray-900">
-                {(forecast.confidence * 100).toFixed(1)}%
+                {forecast.confidence != null ? `${(forecast.confidence * 100).toFixed(1)}%` : '—'}
               </p>
             </div>
           </div>
@@ -478,11 +483,11 @@ export default function ForecastPage() {
             <div className="grid gap-3 sm:grid-cols-3 text-sm">
               <div>
                 <span className="text-gray-500">Pair:</span>{' '}
-                <span className="font-medium">{formatPair(forecast.pair)}</span>
+                <span className="font-medium">{forecast.pair ? formatPair(forecast.pair) : '—'}</span>
               </div>
               <div>
                 <span className="text-gray-500">Model:</span>{' '}
-                <span className="font-medium font-mono text-xs">{forecast.model_name} ({forecast.model_version})</span>
+                <span className="font-medium font-mono text-xs">{forecast.model_name || 'Unknown'} ({forecast.model_version || '—'})</span>
               </div>
               {forecast.trained_at && (
                 <div>
@@ -561,13 +566,13 @@ export default function ForecastPage() {
                           {point.date}
                         </td>
                         <td className="px-4 py-3 text-sm text-right text-gray-900 font-mono">
-                          {point.predicted_price.toFixed(4)}
+                          {point.predicted_price != null ? point.predicted_price.toFixed(4) : '—'}
                         </td>
                         <td className="px-4 py-3 text-sm text-right text-green-700 font-mono">
-                          {point.upper_bound.toFixed(4)}
+                          {point.upper_bound != null ? point.upper_bound.toFixed(4) : '—'}
                         </td>
                         <td className="px-4 py-3 text-sm text-right text-red-700 font-mono">
-                          {point.lower_bound.toFixed(4)}
+                          {point.lower_bound != null ? point.lower_bound.toFixed(4) : '—'}
                         </td>
                         <td className="px-4 py-3 text-center whitespace-nowrap">
                           <span
