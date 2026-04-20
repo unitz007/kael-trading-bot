@@ -1,4 +1,4 @@
-# Web API framework
+# Web framework
 flask>=3.0.0
 
 # Parquet I/O (needed by ingestion cache)
