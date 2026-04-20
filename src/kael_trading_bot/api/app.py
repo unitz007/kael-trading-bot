@@ -771,7 +771,7 @@ def create_app() -> FastAPI:
                 content={"error": f"Internal error generating trade setup: {exc}"},
             )
 
-    @app.get("/api/v1/trade-setups")
+    @app.get("/api/v1/trade-setups", response_model=None)
     def list_trade_setups(
         timeframe: str | None = None,
     ) -> JSONResponse | dict[str, Any]:
