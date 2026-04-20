@@ -1,0 +1,67 @@
+# =============================================================================
+# Kael Trading Bot — Docker Compose
+# =============================================================================
+# Starts the full stack: Python backend (FastAPI) + React frontend (Nginx).
+#
+# Usage:
+#   docker compose up --build        # Build and start both services
+#   docker compose up -d             # Start in detached mode
+#   docker compose down              # Stop and remove containers
+#
+# The frontend is available at http://localhost:3000
+# The backend API  is available at http://localhost:5000
+#
+# Override defaults with a .env file or via -e flags.
+# =============================================================================
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kael-bot-backend
+    restart: unless-stopped
+    ports:
+      - "${KAEL_PORT:-5000}:5000"
+    environment:
+      - KAEL_HOST=0.0.0.0
+      - KAEL_PORT=5000
+      - KAEL_START_DATE=${KAEL_START_DATE:-2020-01-01}
+      - KAEL_END_DATE=${KAEL_END_DATE:-2025-01-01}
+      - KAEL_INTERVAL=${KAEL_INTERVAL:-1d}
+      - KAEL_CACHE_DIR=${KAEL_CACHE_DIR:-.cache/forex_data}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Persist trained models across container restarts
+      - model-data:/app/models
+      # Persist cached forex data
+      - cache-data:/app/.cache
+      # Persist training logs
+      - log-data:/app/logs
+    networks:
+      - kael-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: kael-bot-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      - backend
+    networks:
+      - kael-network
+
+volumes:
+  model-data:
+    name: kael-model-data
+  cache-data:
+    name: kael-cache-data
+  log-data:
+    name: kael-log-data
+
+networks:
+  kael-network:
+    driver: bridge
