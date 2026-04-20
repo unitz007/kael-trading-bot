@@ -38,7 +38,7 @@ export default function ThemeToggle() {
         stroke="currentColor"
         className={`h-5 w-5 transition-transform duration-200 ${
           isDark ? '-rotate-90 scale-0' : 'rotate-0 scale-100'
-        }`}
+        } absolute`}
         aria-hidden="true"
       >
         <path
