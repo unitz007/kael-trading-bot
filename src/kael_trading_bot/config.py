@@ -33,6 +33,11 @@ DEFAULT_END_DATE: str = "2025-01-01"
 DEFAULT_INTERVAL: str = "1d"
 DEFAULT_CACHE_DIR: str = ".cache/forex_data"
 
+# Scanner defaults
+DEFAULT_SCANNER_ENABLED: bool = True
+DEFAULT_SCANNER_INTERVAL_MINUTES: int = 15
+DEFAULT_SCANNER_DATA_DIR: str = ".cache/trade_setups"
+
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -75,3 +80,23 @@ class IngestionConfig:
     def cache_path(self) -> Path:
         """Resolved ``Path`` to the cache directory."""
         return Path(self.cache_dir).expanduser().resolve()
+
+
+@dataclass(frozen=True)
+class ScannerConfig:
+    """Configuration for the scheduled trade setup scanner.
+
+    Attributes:
+        enabled:       Whether the scanner is active.
+        interval_minutes: How often (in minutes) a scan cycle runs.
+        data_dir:      Directory where scanned setups are persisted.
+    """
+
+    enabled: bool = os.getenv("KAEL_SCANNER_ENABLED", str(DEFAULT_SCANNER_ENABLED)).lower() in ("1", "true", "yes")
+    interval_minutes: int = int(os.getenv("KAEL_SCANNER_INTERVAL", str(DEFAULT_SCANNER_INTERVAL_MINUTES)))
+    data_dir: str = os.getenv("KAEL_SCANNER_DATA_DIR", DEFAULT_SCANNER_DATA_DIR)
+
+    @property
+    def data_path(self) -> Path:
+        """Resolved ``Path`` to the scanner data directory."""
+        return Path(self.data_dir).expanduser().resolve()

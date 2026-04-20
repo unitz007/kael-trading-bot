@@ -258,10 +258,20 @@ def cmd_serve(port: int) -> None:
     import uvicorn
 
     from kael_trading_bot.api import create_app
+    from kael_trading_bot.config import ScannerConfig
+    from kael_trading_bot.scanner.scheduler import TradeSetupScanner
+
+    # Start the background scanner (if enabled)
+    scanner_config = ScannerConfig()
+    scanner = TradeSetupScanner(scanner_config)
+    scanner.start()
 
     logger.info("Starting API server on port %d", port)
     app = create_app()
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    try:
+        uvicorn.run(app, host="0.0.0.0", port=port)
+    finally:
+        scanner.stop()
 
 
 def build_parser() -> argparse.ArgumentParser:
