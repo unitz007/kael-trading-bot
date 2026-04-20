@@ -47,6 +47,7 @@ class TradeSetup:
     rr_backtest_info: dict = field(default_factory=dict)
     model_name: str = ""
     model_version: str = ""
+    timeframe: str = ""
     generated_at: str = ""
 
     def to_dict(self) -> dict:
@@ -62,6 +63,7 @@ def generate_trade_setup(
     ohlcv_df: pd.DataFrame,
     model_name: str,
     model_version: str,
+    timeframe: str = "",
 ) -> TradeSetup:
     """Generate a single trade setup from the latest model prediction.
 
@@ -163,6 +165,7 @@ def generate_trade_setup(
         },
         model_name=model_name,
         model_version=model_version,
+        timeframe=timeframe,
         generated_at=generated_at,
     )
 

@@ -4,12 +4,20 @@ import { getPairs, trainModel } from '../api';
 import Spinner from '../components/Spinner';
 import ErrorMessage from '../components/ErrorMessage';
 
+const TIMEFRAME_OPTIONS = [
+  { value: '5m', label: '5 Minutes' },
+  { value: '15m', label: '15 Minutes' },
+  { value: '1h', label: '1 Hour' },
+  { value: '4h', label: '4 Hours' },
+];
+
 export default function TrainingPage() {
   const [searchParams] = useSearchParams();
   const pairParam = searchParams.get('pair') || '';
 
   const [pairs, setPairs] = useState([]);
   const [selectedPair, setSelectedPair] = useState(pairParam);
+  const [selectedTimeframe, setSelectedTimeframe] = useState('1h');
   const [loading, setLoading] = useState(false);
   const [training, setTraining] = useState(false);
   const [error, setError] = useState(null);
@@ -42,7 +50,7 @@ export default function TrainingPage() {
     setError(null);
     setResult(null);
     try {
-      const data = await trainModel(selectedPair);
+      const data = await trainModel(selectedPair, selectedTimeframe);
       setResult(data);
     } catch (err) {
       setError(err.message);
@@ -82,6 +90,27 @@ export default function TrainingPage() {
               {pairs.map((pair) => (
                 <option key={pair} value={pair}>
                   {pair}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex-1 w-full">
+            <label
+              htmlFor="timeframe-select"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Time Frame
+            </label>
+            <select
+              id="timeframe-select"
+              value={selectedTimeframe}
+              onChange={(e) => setSelectedTimeframe(e.target.value)}
+              className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+            >
+              {TIMEFRAME_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
                 </option>
               ))}
             </select>

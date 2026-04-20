@@ -50,9 +50,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-def _pair_to_model_name(pair: str) -> str:
-    """Derive a filesystem-safe model name from a forex pair ticker."""
-    return pair.replace("=", "_").replace("^", "_").lower()
+
 
 
 def _normalise_ticker(pair: str) -> str:
@@ -66,6 +64,29 @@ def _is_supported_pair(pair: str) -> bool:
     """Check if *pair* is in the configured default pairs list."""
     ticker = _normalise_ticker(pair)
     return ticker in DEFAULT_FOREX_PAIRS
+
+SUPPORTED_TIMEFRAMES = ("5m", "15m", "1h", "4h")
+DEFAULT_TIMEFRAME = "1h"
+
+
+def _validate_timeframe(timeframe: str | None) -> str:
+    """Return a validated timeframe string, defaulting to ``DEFAULT_TIMEFRAME``."""
+    if timeframe is None:
+        return DEFAULT_TIMEFRAME
+    if timeframe not in SUPPORTED_TIMEFRAMES:
+        raise ValueError(
+            f"Invalid timeframe '{timeframe}'. "
+            f"Supported timeframes: {', '.join(SUPPORTED_TIMEFRAMES)}"
+        )
+    return timeframe
+
+
+def _pair_to_model_name(pair: str, timeframe: str | None = None) -> str:
+    """Derive a filesystem-safe model name from a forex pair ticker and timeframe."""
+    base = pair.replace("=", "_").replace("^", "_").lower()
+    if timeframe:
+        return f"{base}_{timeframe}"
+    return base
 
 
 # ---------------------------------------------------------------------------
@@ -150,8 +171,8 @@ def create_app() -> FastAPI:
         }
 
     @app.post("/api/v1/pairs/{pair}/train", response_model=None)
-    def train_model(pair: str) -> JSONResponse | dict[str, Any]:
-        """Trigger model training for *pair*."""
+    def train_model(pair: str, timeframe: str | None = None) -> JSONResponse | dict[str, Any]:
+        """Trigger model training for *pair* with an optional *timeframe*."""
         ticker = _normalise_ticker(pair)
 
         if not _is_supported_pair(ticker):
@@ -161,6 +182,14 @@ def create_app() -> FastAPI:
                     "error": f"Unsupported forex pair: {ticker}",
                     "supported_pairs": DEFAULT_FOREX_PAIRS,
                 },
+            )
+
+        try:
+            tf = _validate_timeframe(timeframe)
+        except ValueError as exc:
+            return JSONResponse(
+                status_code=400,
+                content={"error": str(exc)},
             )
 
         start_time = time.time()
@@ -201,7 +230,7 @@ def create_app() -> FastAPI:
             y = feature_df[target_col].values.astype(np.float64)
 
             # 4. Train
-            model_name = _pair_to_model_name(ticker)
+            model_name = _pair_to_model_name(ticker, tf)
             model_version = datetime.now(timezone.utc).strftime("v%Y%m%dT%H%M%S")
 
             pipeline = TrainingPipeline(
@@ -221,6 +250,7 @@ def create_app() -> FastAPI:
 
             response_data: dict[str, Any] = {
                 "pair": ticker,
+                "timeframe": tf,
                 "model_name": result.model_name,
                 "model_version": result.model_version,
                 "model_type": result.model_type,
@@ -251,10 +281,19 @@ def create_app() -> FastAPI:
             )
 
     @app.get("/api/v1/pairs/{pair}/predict", response_model=None)
-    def get_predictions(pair: str) -> JSONResponse | dict[str, Any]:
+    def get_predictions(pair: str, timeframe: str | None = None) -> JSONResponse | dict[str, Any]:
         """Return prediction results for *pair* using the latest trained model."""
         ticker = _normalise_ticker(pair)
-        model_name = _pair_to_model_name(ticker)
+
+        try:
+            tf = _validate_timeframe(timeframe)
+        except ValueError as exc:
+            return JSONResponse(
+                status_code=400,
+                content={"error": str(exc)},
+            )
+
+        model_name = _pair_to_model_name(ticker, tf)
         persistence = ModelPersistence()
 
         try:
@@ -377,6 +416,7 @@ def create_app() -> FastAPI:
 
             return {
                 "pair": ticker,
+                "timeframe": tf,
                 "model_name": model_name,
                 "model_version": version,
                 "trained_at": metadata.trained_at,
@@ -400,7 +440,7 @@ def create_app() -> FastAPI:
             )
 
     @app.get("/api/v1/pairs/{pair}/forecast", response_model=None)
-    def get_forecast(pair: str, horizon: int = 30) -> JSONResponse | dict[str, Any]:
+    def get_forecast(pair: str, horizon: int = 30, timeframe: str | None = None) -> JSONResponse | dict[str, Any]:
         """Return future price forecast for *pair* using the latest trained model.
 
         Parameters
@@ -409,9 +449,20 @@ def create_app() -> FastAPI:
             Forex pair ticker.
         horizon:
             Number of future periods to forecast.
+        timeframe:
+            Time frame for the model (5m, 15m, 1h, 4h).
         """
         ticker = _normalise_ticker(pair)
-        model_name = _pair_to_model_name(ticker)
+
+        try:
+            tf = _validate_timeframe(timeframe)
+        except ValueError as exc:
+            return JSONResponse(
+                status_code=400,
+                content={"error": str(exc)},
+            )
+
+        model_name = _pair_to_model_name(ticker, tf)
         persistence = ModelPersistence()
 
         # Validate horizon
@@ -579,6 +630,7 @@ def create_app() -> FastAPI:
 
             return {
                 "pair": ticker,
+                "timeframe": tf,
                 "model_name": model_name,
                 "model_version": version,
                 "trained_at": metadata.trained_at,
@@ -604,7 +656,7 @@ def create_app() -> FastAPI:
             )
 
     @app.get("/api/v1/pairs/{pair}/trade-setup", response_model=None)
-    def get_trade_setup(pair: str) -> JSONResponse | dict[str, Any]:
+    def get_trade_setup(pair: str, timeframe: str | None = None) -> JSONResponse | dict[str, Any]:
         """Generate an actionable trade setup for *pair* using the latest trained model.
 
         Returns entry price, stop loss, take profit, model confidence,
@@ -621,7 +673,15 @@ def create_app() -> FastAPI:
                 },
             )
 
-        model_name = _pair_to_model_name(ticker)
+        try:
+            tf = _validate_timeframe(timeframe)
+        except ValueError as exc:
+            return JSONResponse(
+                status_code=400,
+                content={"error": str(exc)},
+            )
+
+        model_name = _pair_to_model_name(ticker, tf)
         persistence = ModelPersistence()
 
         try:
@@ -688,6 +748,7 @@ def create_app() -> FastAPI:
                 ohlcv_df=raw_df_copy,
                 model_name=model_name,
                 model_version=version,
+                timeframe=tf,
             )
 
             return setup.to_dict()

@@ -12,6 +12,13 @@ const HORIZON_OPTIONS = [
   { value: 90, label: '3 Months' },
 ];
 
+const TIMEFRAME_OPTIONS = [
+  { value: '5m', label: '5 Min' },
+  { value: '15m', label: '15 Min' },
+  { value: '1h', label: '1 Hour' },
+  { value: '4h', label: '4 Hours' },
+];
+
 function formatPair(ticker) {
   return ticker.replace('=X', '');
 }
@@ -258,6 +265,7 @@ export default function ForecastPage() {
   const [pairs, setPairs] = useState([]);
   const [selectedPair, setSelectedPair] = useState(preselectedPair);
   const [horizon, setHorizon] = useState(30);
+  const [selectedTimeframe, setSelectedTimeframe] = useState('1h');
   const [loading, setLoading] = useState(false);
   const [forecast, setForecast] = useState(null);
   const [error, setError] = useState(null);
@@ -316,14 +324,14 @@ export default function ForecastPage() {
     setForecast(null);
     setError(null);
     try {
-      const data = await getForecast(selectedPair, horizon);
+      const data = await getForecast(selectedPair, horizon, selectedTimeframe);
       setForecast(data);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [selectedPair, horizon]);
+  }, [selectedPair, horizon, selectedTimeframe]);
 
   if (pairsLoading) return <Spinner className="py-20" />;
 
@@ -390,6 +398,30 @@ export default function ForecastPage() {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Time Frame Selection */}
+          <div>
+            <label htmlFor="forecast-timeframe" className="block text-sm font-medium text-gray-700 mb-2">
+              Time Frame
+            </label>
+            <select
+              id="forecast-timeframe"
+              value={selectedTimeframe}
+              onChange={(e) => {
+                setSelectedTimeframe(e.target.value);
+                setForecast(null);
+                setError(null);
+              }}
+              disabled={loading}
+              className="block w-full max-w-xs rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 focus:outline-none disabled:opacity-50"
+            >
+              {TIMEFRAME_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Generate Button */}
