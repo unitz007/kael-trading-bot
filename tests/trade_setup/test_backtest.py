@@ -103,8 +103,40 @@ class TestSelectOptimalRRRatio:
 
     def test_rr_ratio_never_below_minimum(self):
         df = _make_ohlcv(300)
-        result = select_optimal_rr_ratio(df, min_rr=1.2)
-        assert result["rr_ratio"] >= 1.2
+        result = select_optimal_rr_ratio(df, min_rr=MIN_RR_RATIO)
+        assert result["rr_ratio"] >= MIN_RR_RATIO
+
+    def test_rr_ratio_minimum_floor_is_1_to_2(self):
+        """The default MIN_RR_RATIO must be at least 2.0 (1:2 R:R)."""
+        assert MIN_RR_RATIO >= 2.0
+
+    def test_rr_ratio_at_least_2_with_default_min(self):
+        """Even when backtest would prefer a lower ratio, floor is enforced."""
+        df = _make_ohlcv(300)
+        result = select_optimal_rr_ratio(df)
+        assert result["rr_ratio"] >= 2.0
+
+    def test_rr_ratio_exactly_2_accepted(self):
+        """When raw R:R is exactly 2.0 (the floor), it is accepted as-is."""
+        df = _make_ohlcv(300)
+        # Pass min_rr=2.0 explicitly; the function should accept a value of exactly 2.0
+        result = select_optimal_rr_ratio(df, min_rr=2.0)
+        assert result["rr_ratio"] >= 2.0
+        assert result["min_rr"] == 2.0
+
+    def test_rr_ratio_below_2_clamped_to_2(self):
+        """When backtest best score is below 1:2, the result is clamped to 1:2."""
+        df = _make_ohlcv(300)
+        # Force a high min_rr so the function falls back to it
+        result = select_optimal_rr_ratio(df, min_rr=2.5)
+        assert result["rr_ratio"] >= 2.5
+
+    def test_fallback_returns_min_rr_of_2(self):
+        """Insufficient data falls back to the default minimum of 2.0."""
+        tiny_df = _make_ohlcv(10)
+        result = select_optimal_rr_ratio(tiny_df)
+        assert result["rr_ratio"] == MIN_RR_RATIO
+        assert MIN_RR_RATIO >= 2.0
 
     def test_rr_ratio_never_above_maximum(self):
         df = _make_ohlcv(300)
@@ -116,15 +148,16 @@ class TestSelectOptimalRRRatio:
         result = select_optimal_rr_ratio(tiny_df)
         assert result["rr_ratio"] == MIN_RR_RATIO
         assert result["backtested"] is False
+        assert MIN_RR_RATIO >= 2.0
 
     def test_candidates_contain_expected_ratios(self):
         df = _make_ohlcv(300)
-        result = select_optimal_rr_ratio(df, min_rr=1.2, max_rr=1.5, step=0.1)
+        result = select_optimal_rr_ratio(df, min_rr=2.0, max_rr=2.3, step=0.1)
         ratios = [c["rr_ratio"] for c in result["candidates"]]
-        assert 1.2 in ratios
-        assert 1.3 in ratios
-        assert 1.4 in ratios
-        assert 1.5 in ratios
+        assert 2.0 in ratios
+        assert 2.1 in ratios
+        assert 2.2 in ratios
+        assert 2.3 in ratios
 
     def test_candidate_scores_are_non_negative(self):
         df = _make_ohlcv(300)
@@ -144,9 +177,9 @@ class TestSelectOptimalRRRatio:
 
     def test_custom_min_rr(self):
         df = _make_ohlcv(300)
-        result = select_optimal_rr_ratio(df, min_rr=1.5)
-        assert result["rr_ratio"] >= 1.5
-        assert result["min_rr"] == 1.5
+        result = select_optimal_rr_ratio(df, min_rr=2.5)
+        assert result["rr_ratio"] >= 2.5
+        assert result["min_rr"] == 2.5
 
     def test_reason_is_non_empty_string(self):
         df = _make_ohlcv(300)

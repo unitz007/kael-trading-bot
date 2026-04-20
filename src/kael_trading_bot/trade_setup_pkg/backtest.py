@@ -3,12 +3,12 @@
 Analyses historical OHLCV data to determine which risk-to-reward ratio
 produced the best historical win-rate × R:R score for a given currency pair
 and timeframe.  The selected ratio is clamped to a configurable floor
-(default 1:1.2) to guarantee a minimum quality threshold.
+(default 1:2) to guarantee a minimum quality threshold.
 
 Strategy
 --------
 1. Compute a rolling ATR(14) for volatility.
-2. For each candidate R:R ratio (1:1.2 … 1:3.0 in 0.1 steps):
+2. For each candidate R:R ratio (1:2.0 … 1:3.0 in 0.1 steps):
    a. Walk through the historical data simulating entry at every *N*-bar
       interval (where *N* is derived from ``lookback_window``).
    b. Entry direction is determined by a simple momentum signal: price
@@ -37,8 +37,12 @@ logger = logging.getLogger(__name__)
 # Configuration defaults
 # ---------------------------------------------------------------------------
 
-MIN_RR_RATIO: float = 1.2
-"""Floor for the R:R ratio.  Any backtest-derived ratio below this is clamped."""
+MIN_RR_RATIO: float = 2.0
+"""Floor for the R:R ratio.  Any backtest-derived ratio below this is clamped.
+
+This enforces a minimum of 1:2 R:R so that potential reward is always at
+least twice the risk.
+"""
 
 MAX_RR_RATIO: float = 3.0
 """Ceiling for candidate R:R ratios."""

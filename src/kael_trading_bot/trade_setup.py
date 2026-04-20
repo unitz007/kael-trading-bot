@@ -43,7 +43,7 @@ class TradeSetup:
     take_profit: float
     confidence: float
     atr: float
-    rr_ratio: float = 1.2
+    rr_ratio: float = 2.0
     rr_backtest_info: dict = field(default_factory=dict)
     model_name: str = ""
     model_version: str = ""
@@ -67,7 +67,7 @@ def generate_trade_setup(
 
     The R:R ratio is determined dynamically by backtesting historical data
     for the same currency pair and timeframe, selecting the ratio that
-    maximises historical performance.  A minimum floor of 1:1.2 is enforced.
+    maximises historical performance.  A minimum floor of 1:2 is enforced.
 
     Args:
         pair:           Normalised forex pair ticker.
