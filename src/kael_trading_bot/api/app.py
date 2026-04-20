@@ -37,7 +37,10 @@ from kael_trading_bot.features.pipeline import FeatureConfig, build_feature_matr
 from kael_trading_bot.ingestion import ForexDataFetcher
 from kael_trading_bot.training.persistence import ModelPersistence
 from kael_trading_bot.training.pipeline import PipelineConfig, TrainingPipeline
+from kael_trading_bot.trade_setup import generate_trade_setup
 import pandas as pd
+
+
 
 
 logger = logging.getLogger(__name__)
@@ -598,6 +601,107 @@ def create_app() -> FastAPI:
             return JSONResponse(
                 status_code=500,
                 content={"error": f"Internal error during forecast: {exc}"},
+            )
+
+    @app.get("/api/v1/pairs/{pair}/trade-setup", response_model=None)
+    def get_trade_setup(pair: str) -> JSONResponse | dict[str, Any]:
+        """Generate an actionable trade setup for *pair* using the latest trained model.
+
+        Returns entry price, stop loss, take profit, model confidence,
+        and trade direction (buy/sell).
+        """
+        ticker = _normalise_ticker(pair)
+
+        if not _is_supported_pair(ticker):
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "error": f"Unsupported forex pair: {ticker}",
+                    "supported_pairs": DEFAULT_FOREX_PAIRS,
+                },
+            )
+
+        model_name = _pair_to_model_name(ticker)
+        persistence = ModelPersistence()
+
+        try:
+            versions = persistence.list_versions(model_name)
+            if not versions:
+                return JSONResponse(
+                    status_code=404,
+                    content={
+                        "error": (
+                            f"No trained model found for pair '{ticker}'. "
+                            f"Train a model first via POST /api/v1/pairs/{pair}/train"
+                        ),
+                    },
+                )
+            version = versions[-1]
+        except Exception as exc:
+            logger.exception("Error listing model versions for %s", model_name)
+            return JSONResponse(
+                status_code=500,
+                content={"error": f"Internal error listing models: {exc}"},
+            )
+
+        try:
+            model, metadata = persistence.load(model_name, version)
+
+            if not metadata.feature_names:
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "error": (
+                            f"Model '{model_name}' has no feature names "
+                            f"recorded. Cannot generate trade setup."
+                        ),
+                    },
+                )
+
+            # Ingest & engineer features
+            ingestion_cfg = IngestionConfig(pairs=(ticker,))
+            fetcher = ForexDataFetcher(ingestion_cfg)
+            raw_df = fetcher.get(ticker)
+            raw_df_copy = raw_df.copy()
+            raw_df.columns = [c.lower() for c in raw_df.columns]
+            feature_df = build_feature_matrix(raw_df, config=FeatureConfig())
+
+            missing_features = [
+                f for f in metadata.feature_names if f not in feature_df.columns
+            ]
+            if missing_features:
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "error": (
+                            f"Missing features for trade setup: {missing_features}. "
+                            f"Model was trained on a different feature set."
+                        ),
+                    },
+                )
+
+            setup = generate_trade_setup(
+                pair=ticker,
+                model=model,
+                metadata=metadata,
+                feature_df=feature_df,
+                ohlcv_df=raw_df_copy,
+                model_name=model_name,
+                model_version=version,
+            )
+
+            return setup.to_dict()
+
+        except ValueError as exc:
+            return JSONResponse(
+                status_code=400,
+                content={"error": f"Could not generate trade setup: {exc}"},
+            )
+        except Exception as exc:
+            logger.exception("Trade setup generation failed for %s", ticker)
+            return JSONResponse(
+                status_code=500,
+                content={"error": f"Internal error generating trade setup: {exc}"},
             )
 
     @app.get("/api/v1/models", response_model=None)

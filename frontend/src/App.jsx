@@ -4,7 +4,7 @@ import Navbar, { TopBar } from './components/Navbar';
 import ForexPairsPage from './pages/ForexPairsPage';
 import TrainingPage from './pages/TrainingPage';
 import PredictionsPage from './pages/PredictionsPage';
-import ForecastPage from './pages/ForecastPage';
+import ForecastPage from './pages/ForecastPage';import TradeSetupPage from './pages/TradeSetupPage';
 
 
 export default function App() {
@@ -22,7 +22,7 @@ export default function App() {
             <Route path="/" element={<ForexPairsPage />} />
             <Route path="/training" element={<TrainingPage />} />
             <Route path="/predictions" element={<PredictionsPage />} />
-            <Route path="/forecast" element={<ForecastPage />} />
+            <Route path="/forecast" element={<ForecastPage />} />            <Route path="/trade-setup" element={<TradeSetupPage />} />
 
           </Routes>
         </main>
