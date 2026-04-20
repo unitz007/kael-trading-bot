@@ -1,56 +1,46 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { getPairs, trainModel } from '../api';
 import Spinner from '../components/Spinner';
 import ErrorMessage from '../components/ErrorMessage';
 
-function formatPair(ticker) {
-  return ticker.replace('=X', '');
-}
-
 export default function TrainingPage() {
   const [searchParams] = useSearchParams();
-  const preselectedPair = searchParams.get('pair') || '';
+  const pairParam = searchParams.get('pair') || '';
 
   const [pairs, setPairs] = useState([]);
-  const [selectedPair, setSelectedPair] = useState(preselectedPair);
+  const [selectedPair, setSelectedPair] = useState(pairParam);
+  const [loading, setLoading] = useState(false);
   const [training, setTraining] = useState(false);
-  const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
-  const [pairsLoading, setPairsLoading] = useState(true);
+  const [result, setResult] = useState(null);
 
   useEffect(() => {
-    if (preselectedPair) {
-      setSelectedPair(preselectedPair);
-    }
-  }, [preselectedPair]);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function fetchPairs() {
+    const fetchPairs = async () => {
+      setLoading(true);
       try {
         const data = await getPairs();
-        if (!cancelled) {
-          setPairs(data.pairs || []);
-          if (!preselectedPair && data.pairs?.length > 0) {
-            setSelectedPair(data.pairs[0]);
-          }
-        }
+        setPairs(Array.isArray(data.pairs) ? data.pairs : []);
       } catch (err) {
-        if (!cancelled) setError(err.message);
+        setError(err.message);
       } finally {
-        if (!cancelled) setPairsLoading(false);
+        setLoading(false);
       }
-    }
+    };
     fetchPairs();
-    return () => { cancelled = true; };
-  }, [preselectedPair]);
+  }, []);
 
-  const handleTrain = useCallback(async () => {
-    if (!selectedPair || training) return;
+  useEffect(() => {
+    if (pairParam) {
+      setSelectedPair(pairParam);
+    }
+  }, [pairParam]);
+
+  const handleTrain = async () => {
+    if (!selectedPair) return;
     setTraining(true);
-    setResult(null);
     setError(null);
+    setResult(null);
     try {
       const data = await trainModel(selectedPair);
       setResult(data);
@@ -59,146 +49,178 @@ export default function TrainingPage() {
     } finally {
       setTraining(false);
     }
-  }, [selectedPair, training]);
+  };
 
-  if (pairsLoading) return <Spinner className="py-20" />;
+  if (loading) return <Spinner className="py-20" />;
+  if (error && !training) return <ErrorMessage message={error} />;
 
   return (
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Model Training</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Train an XGBoost model for a forex pair using historical data.
+          Select a forex pair and start a new model training session.
         </p>
       </div>
 
-      {/* Pair Selection */}
-      <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm mb-6">
-        <label htmlFor="pair-select" className="block text-sm font-medium text-gray-700 mb-2">
-          Select Forex Pair
-        </label>
-        <select
-          id="pair-select"
-          value={selectedPair}
-          onChange={(e) => {
-            setSelectedPair(e.target.value);
-            setResult(null);
-            setError(null);
-          }}
-          disabled={training}
-          className="block w-full max-w-xs rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 focus:outline-none disabled:opacity-50"
-        >
-          {pairs.map((pair) => (
-            <option key={pair} value={pair}>
-              {formatPair(pair)}
-            </option>
-          ))}
-        </select>
+      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col sm:flex-row gap-4 items-end">
+          <div className="flex-1 w-full">
+            <label
+              htmlFor="pair-select"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Forex Pair
+            </label>
+            <select
+              id="pair-select"
+              value={selectedPair}
+              onChange={(e) => setSelectedPair(e.target.value)}
+              className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+            >
+              <option value="">Select a pair...</option>
+              {pairs.map((pair) => (
+                <option key={pair} value={pair}>
+                  {pair}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <button
-          onClick={handleTrain}
-          disabled={training || !selectedPair}
-          className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {training && (
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-          )}
-          {training ? 'Training Model...' : 'Train Model'}
-        </button>
+          <button
+            onClick={handleTrain}
+            disabled={!selectedPair || training}
+            className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+          >
+            {training ? <Spinner className="h-5 w-5 inline" /> : 'Train Model'}
+          </button>
+        </div>
       </div>
 
-      {/* Status during training */}
       {training && (
-        <div className="rounded-xl border border-blue-200 bg-blue-50 p-5 mb-6">
-          <div className="flex items-center gap-3">
-            <Spinner className="py-0" />
-            <div>
-              <p className="text-sm font-medium text-blue-800">Training in progress</p>
-              <p className="text-sm text-blue-700">
-                Training model for {formatPair(selectedPair)}. This may take a moment...
-              </p>
-            </div>
-          </div>
+        <div className="mt-6">
+          <Spinner className="py-10" />
+          <p className="text-center text-sm text-gray-500 mt-2">
+            Training model for {selectedPair}...
+          </p>
         </div>
       )}
 
-      {/* Error */}
-      {error && !training && <ErrorMessage message={error} onRetry={handleTrain} />}
-
-      {/* Results */}
       {result && (
-        <div className="rounded-xl border border-green-200 bg-green-50 p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 text-green-600"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
-              />
-            </svg>
-            <h2 className="text-lg font-semibold text-green-800">Training Complete</h2>
+        <div className="mt-6 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 bg-green-50">
+            <h2 className="text-lg font-semibold text-green-800">
+              Training Complete
+            </h2>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <ResultCard label="Forex Pair" value={formatPair(result.pair)} />
-            <ResultCard label="Model Name" value={result.model_name} />
-            <ResultCard label="Model Version" value={result.model_version} />
-            <ResultCard label="Model Type" value={result.model_type} />
-            <ResultCard label="Duration" value={`${result.duration_seconds}s`} />
-            <ResultCard label="Samples Trained" value={result.samples_trained?.toLocaleString()} />
-            <ResultCard label="Features Used" value={result.num_features} />
-            {result.saved_path && (
-              <ResultCard label="Saved Path" value={result.saved_path} />
-            )}
-          </div>
+          <div className="px-6 py-4">
+            <table className="w-full text-sm">
+              <tbody className="divide-y divide-gray-200">
+                {result.model_name && (
+                  <tr>
+                    <td className="py-2 pr-4 font-medium text-gray-700 whitespace-nowrap">
+                      Model
+                    </td>
+                    <td className="py-2 text-gray-900">{result.model_name}</td>
+                  </tr>
+                )}
+                {result.version != null && (
+                  <tr>
+                    <td className="py-2 pr-4 font-medium text-gray-700 whitespace-nowrap">
+                      Version
+                    </td>
+                    <td className="py-2 text-gray-900">{result.version}</td>
+                  </tr>
+                )}
+                {result.model_type && (
+                  <tr>
+                    <td className="py-2 pr-4 font-medium text-gray-700 whitespace-nowrap">
+                      Type
+                    </td>
+                    <td className="py-2 text-gray-900">{result.model_type}</td>
+                  </tr>
+                )}
+                {result.trained_at && (
+                  <tr>
+                    <td className="py-2 pr-4 font-medium text-gray-700 whitespace-nowrap">
+                      Trained At
+                    </td>
+                    <td className="py-2 text-gray-900">
+                      {new Date(result.trained_at).toLocaleString()}
+                    </td>
+                  </tr>
+                )}
+                {result.training_duration != null && (
+                  <tr>
+                    <td className="py-2 pr-4 font-medium text-gray-700 whitespace-nowrap">
+                      Duration
+                    </td>
+                    <td className="py-2 text-gray-900">
+                      {result.training_duration}s
+                    </td>
+                  </tr>
+                )}
+                {result.status && (
+                  <tr>
+                    <td className="py-2 pr-4 font-medium text-gray-700 whitespace-nowrap">
+                      Status
+                    </td>
+                    <td className="py-2 text-gray-900">
+                      <span className="inline-flex items-center rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                        {result.status}
+                      </span>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
 
-          {result.test_metrics && (
-            <div className="mt-6">
-              <h3 className="text-sm font-semibold text-green-800 mb-3">Test Metrics</h3>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-green-200">
-                  <thead>
-                    <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-green-700 uppercase tracking-wider">Metric</th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-green-700 uppercase tracking-wider">Value</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-green-200">
-                    {Object.entries(result.test_metrics).map(([key, value]) => (
-                      <tr key={key}>
-                        <td className="px-4 py-2 text-sm text-green-900 capitalize">
-                          {key.replace(/_/g, ' ')}
-                        </td>
-                        <td className="px-4 py-2 text-sm text-green-900 text-right font-mono">
-                          {typeof value === 'number' ? value.toFixed(4) : value}
-                        </td>
+            {result.test_metrics &&
+              typeof result.test_metrics === 'object' &&
+              !Array.isArray(result.test_metrics) &&
+              Object.keys(result.test_metrics).length > 0 && (
+                <div className="mt-6">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                    Test Metrics
+                  </h3>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="text-left py-2 pr-4 font-medium text-gray-700">
+                          Metric
+                        </th>
+                        <th className="text-left py-2 font-medium text-gray-700">
+                          Value
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {Object.entries(result.test_metrics).map(
+                        ([key, value]) => (
+                          <tr key={key}>
+                            <td className="py-2 pr-4 text-gray-700">{key}</td>
+                            <td className="py-2 text-gray-900">
+                              {typeof value === 'number'
+                                ? value.toFixed(4)
+                                : String(value ?? '')}
+                            </td>
+                          </tr>
+                        )
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+          </div>
         </div>
       )}
-    </div>
-  );
-}
 
-function ResultCard({ label, value }) {
-  return (
-    <div className="rounded-lg bg-white/60 px-4 py-3">
-      <p className="text-xs font-medium text-green-600 uppercase tracking-wider">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-green-900 truncate" title={value}>
-        {value}
-      </p>
+      {!loading && !training && !result && !error && (
+        <div className="mt-8 text-center text-gray-400">
+          <p className="text-sm">No training results yet. Select a pair and click Train Model to get started.</p>
+        </div>
+      )}
     </div>
   );
 }
