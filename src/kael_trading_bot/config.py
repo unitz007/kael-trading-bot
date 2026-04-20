@@ -7,10 +7,13 @@ programmatically or via environment variables.
 
 from __future__ import annotations
 
+
 import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+from datetime import date
+from dateutil.relativedelta import relativedelta
 
 # ---------------------------------------------------------------------------
 # Defaults
@@ -50,6 +53,8 @@ class IngestionConfig:
 
     pairs: tuple[str, ...] = tuple(DEFAULT_FOREX_PAIRS)
     start_date: str = os.getenv("KAEL_START_DATE", DEFAULT_START_DATE)
+    DEFAULT_END_DATE: str = date.today()
+    DEFAULT_START_DATE = DEFAULT_END_DATE - relativedelta(years=5)
     end_date: str = os.getenv("KAEL_END_DATE", DEFAULT_END_DATE)
     interval: str = os.getenv("KAEL_INTERVAL", DEFAULT_INTERVAL)
     cache_dir: str = os.getenv("KAEL_CACHE_DIR", DEFAULT_CACHE_DIR)
