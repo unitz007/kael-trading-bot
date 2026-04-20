@@ -7,10 +7,12 @@ confidence) from model predictions and recent OHLCV data.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 
 import numpy as np
 import pandas as pd
+
+from kael_trading_bot.trade_setup.backtest import select_optimal_rr_ratio
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +29,8 @@ class TradeSetup:
         take_profit:      Take-profit price.
         confidence:       Model confidence score between 0 and 1.
         atr:              ATR value used to compute SL/TP.
+        rr_ratio:         Risk-to-reward ratio used (dynamically determined).
+        rr_backtest_info: Backtest metadata explaining the chosen R:R ratio.
         model_name:       Name of the model used.
         model_version:    Version of the model used.
         generated_at:     ISO-8601 timestamp of when the setup was created.
@@ -39,9 +43,11 @@ class TradeSetup:
     take_profit: float
     confidence: float
     atr: float
-    model_name: str
-    model_version: str
-    generated_at: str
+    rr_ratio: float = 1.2
+    rr_backtest_info: dict = field(default_factory=dict)
+    model_name: str = ""
+    model_version: str = ""
+    generated_at: str = ""
 
     def to_dict(self) -> dict:
         """Serialise to a plain dict suitable for JSON responses."""
@@ -56,11 +62,12 @@ def generate_trade_setup(
     ohlcv_df: pd.DataFrame,
     model_name: str,
     model_version: str,
-    *,
-    tp_atr_mult: float = 2.0,
-    sl_atr_mult: float = 1.5,
 ) -> TradeSetup:
     """Generate a single trade setup from the latest model prediction.
+
+    The R:R ratio is determined dynamically by backtesting historical data
+    for the same currency pair and timeframe, selecting the ratio that
+    maximises historical performance.  A minimum floor of 1:1.2 is enforced.
 
     Args:
         pair:           Normalised forex pair ticker.
@@ -70,8 +77,6 @@ def generate_trade_setup(
         ohlcv_df:       Raw OHLCV DataFrame (used for current price + ATR).
         model_name:     Identifier of the model.
         model_version:  Version string of the model.
-        tp_atr_mult:    Take-profit distance as a multiple of ATR.
-        sl_atr_mult:    Stop-loss distance as a multiple of ATR.
 
     Returns:
         A :class:`TradeSetup` instance.
@@ -119,8 +124,13 @@ def generate_trade_setup(
     if atr_value <= 0:
         atr_value = latest_close * 0.01
 
-    sl_distance = atr_value * sl_atr_mult
-    tp_distance = atr_value * tp_atr_mult
+    # --- Dynamic R:R ratio from backtesting ---
+    rr_info = select_optimal_rr_ratio(ohlcv_df)
+    rr_ratio = rr_info["rr_ratio"]
+
+    # SL is always 1× ATR; TP = ATR × rr_ratio
+    sl_distance = atr_value * 1.0
+    tp_distance = atr_value * rr_ratio
 
     if direction == "buy":
         entry_price = latest_close
@@ -144,19 +154,27 @@ def generate_trade_setup(
         take_profit=take_profit,
         confidence=round(confidence, 4),
         atr=round(atr_value, 5),
+        rr_ratio=rr_ratio,
+        rr_backtest_info={
+            "backtested": rr_info["backtested"],
+            "reason": rr_info["reason"],
+            "min_rr": rr_info["min_rr"],
+            "candidates": rr_info.get("candidates", []),
+        },
         model_name=model_name,
         model_version=model_version,
         generated_at=generated_at,
     )
 
     logger.info(
-        "Trade setup generated: %s %s @ %.5f (SL=%.5f, TP=%.5f, conf=%.2f%%)",
+        "Trade setup generated: %s %s @ %.5f (SL=%.5f, TP=%.5f, conf=%.2f%%, R:R=1:%.2f)",
         pair,
         direction,
         entry_price,
         stop_loss,
         take_profit,
         confidence * 100,
+        rr_ratio,
     )
 
     return setup
