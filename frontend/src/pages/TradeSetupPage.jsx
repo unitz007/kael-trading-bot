@@ -269,9 +269,22 @@ export default function TradeSetupPage() {
               <div className="mt-3 pt-3 border-t border-gray-100">
                 <span className="text-gray-500 text-sm">Ratio:</span>
                 <p className="text-lg font-bold text-gray-900">
-                  1 : {(Math.abs(setup.take_profit - setup.entry_price) / Math.abs(setup.entry_price - setup.stop_loss)).toFixed(2)}
+                  1 : {setup.rr_ratio ? setup.rr_ratio.toFixed(2) : (Math.abs(setup.take_profit - setup.entry_price) / Math.abs(setup.entry_price - setup.stop_loss)).toFixed(2)}
                 </p>
+                {setup.rr_backtest_info && (
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <span className={`inline-block h-2 w-2 rounded-full ${setup.rr_backtest_info.backtested ? 'bg-green-500' : 'bg-amber-500'}`} />
+                    <span className="text-xs text-gray-500">
+                      {setup.rr_backtest_info.backtested ? 'Dynamically selected from backtest' : 'Using minimum ratio (insufficient data)'}
+                    </span>
+                  </div>
+                )}
               </div>
+              {setup.rr_backtest_info && setup.rr_backtest_info.reason && (
+                <p className="mt-2 text-xs text-gray-400 italic">
+                  {setup.rr_backtest_info.reason}
+                </p>
+              )}
             </div>
 
             {/* Model Details */}
