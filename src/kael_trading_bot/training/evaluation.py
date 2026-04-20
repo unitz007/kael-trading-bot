@@ -160,9 +160,14 @@ class ModelEvaluator:
         roc_auc_val: float | None = None
         if y_proba is not None:
             try:
-                roc_auc_val = float(
-                    roc_auc_score(y_true, y_proba)
-                )
+                # roc_auc_score for binary classification expects y_true in {0, 1}
+                # (or {-1, 1}). Many pipelines use {-1, 1} for direction labels.
+                unique = np.unique(y_true)
+                if unique.size == 2 and self.pos_label in unique:
+                    y_true_bin = (y_true == self.pos_label).astype(int)
+                    roc_auc_val = float(roc_auc_score(y_true_bin, y_proba))
+                else:
+                    roc_auc_val = float(roc_auc_score(y_true, y_proba))
             except ValueError:
                 roc_auc_val = None
 

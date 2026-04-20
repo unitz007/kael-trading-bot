@@ -35,6 +35,70 @@ class TestPipelineConfig:
 
 
 class TestTrainingPipeline:
+    def test_decoder_accepts_score_matrix(self) -> None:
+        label_values = np.array([-1.0, 0.0, 1.0])
+        scores = np.array(
+            [
+                [0.1, 0.2, 0.7],
+                [0.9, 0.05, 0.05],
+                [0.0, 1.0, 0.0],
+            ]
+        )
+        decoded = TrainingPipeline._decode_from_fit(scores, label_values)
+        np.testing.assert_array_equal(decoded, np.array([1.0, -1.0, 0.0]))
+
+    def test_decoder_truncates_extra_score_columns(self) -> None:
+        label_values = np.array([-1.0, 1.0])
+        scores = np.array(
+            [
+                [0.1, 0.9, 0.0],
+                [0.8, 0.2, 0.0],
+            ]
+        )
+        decoded = TrainingPipeline._decode_from_fit(scores, label_values)
+        np.testing.assert_array_equal(decoded, np.array([1.0, -1.0]))
+
+    def test_rejects_multilabel_indicator_targets(self) -> None:
+        X, y, _ = _make_dataset(100)
+        y_one_hot = np.eye(2, dtype=int)[y]
+        config = PipelineConfig(
+            model_type=ModelType.LOGISTIC_REGRESSION,
+            model_name="reject_one_hot",
+            model_version="v1",
+            cross_validate=False,
+            save_model=False,
+            log_run=False,
+        )
+        pipeline = TrainingPipeline(config=config)
+        with pytest.raises(ValueError, match="1D array of class labels"):
+            pipeline.run(X, y_one_hot)
+
+    def test_xgboost_accepts_direction_labels(self) -> None:
+        """Regression: XGBoost rejects non-contiguous binary labels like [-1, 1]."""
+        X, y01, _ = _make_dataset(300)
+        y = np.where(y01 == 1, 1.0, -1.0)
+
+        config = PipelineConfig(
+            model_type=ModelType.XGBOOST,
+            model_name="xgb_dir",
+            model_version="v1",
+            cross_validate=False,
+            save_model=False,
+            log_run=False,
+            model_params={
+                "n_estimators": 20,
+                "max_depth": 3,
+                "learning_rate": 0.1,
+                "subsample": 1.0,
+                "colsample_bytree": 1.0,
+                "verbosity": 0,
+            },
+        )
+        pipeline = TrainingPipeline(config=config)
+        result = pipeline.run(X, y)
+
+        assert result.test_eval is not None
+
     def test_logistic_regression_end_to_end(self, tmp_path: Path) -> None:
         X, y, returns = _make_dataset(300)
         config = PipelineConfig(

@@ -27,7 +27,6 @@ from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
-
 from kael_trading_bot.config import IngestionConfig
 from kael_trading_bot.features.pipeline import FeatureConfig, build_feature_matrix
 from kael_trading_bot.ingestion import ForexDataFetcher
@@ -105,7 +104,7 @@ def cmd_train(pair: str) -> None:
     logger.info("[3/4] Preparing training data …")
 
     # Identify feature vs target columns
-    target_col = "target_direction_1"  # 1-step-ahead direction
+    target_col = "target_dir_1"  # 1-step-ahead direction
     if target_col not in feature_df.columns:
         raise ValueError(
             f"Target column '{target_col}' not found. "
@@ -138,7 +137,12 @@ def cmd_train(pair: str) -> None:
             model_version=model_version,
             save_model=True,
             log_run=True,
+            evaluator_average="macro",
             cross_validate=True,
+            model_params={
+                "objective": "multi:softprob",
+                "num_class": 3,
+            }
         ),
     )
 
