@@ -14,7 +14,6 @@ ML-based forex trading bot with technical feature engineering, model training pi
   - [Model Training](#model-training)
   - [Using a Trained Model](#using-a-trained-model)
   - [REST API](#rest-api)
-  - [Web UI](#web-ui)
   - [Running Tests](#running-tests)
 - [Project Structure](#project-structure)
 - [License](#license)
@@ -25,7 +24,7 @@ ML-based forex trading bot with technical feature engineering, model training pi
 
 Kael Trading Bot ingests forex pair data via Yahoo Finance, engineers technical features (SMA, EMA, RSI, MACD, Bollinger Bands, ATR, rolling stats, temporal features, and directional targets), trains ML classification models (XGBoost, LightGBM, Random Forest, Logistic Regression), evaluates them with both classification and trading-oriented metrics, and persists trained models for downstream use.
 
-In addition to the Python API and CLI, the project provides a **REST API** that exposes bot capabilities as HTTP endpoints and a **Web UI** that lets you browse forex pairs, train models, and view predictions from the browser.
+In addition to the Python API and CLI, the project provides a **REST API** (built with FastAPI) that exposes bot capabilities as HTTP endpoints and a **Web UI** that lets you browse forex pairs, train models, and view predictions from the browser.
 
 ---
 
@@ -80,7 +79,8 @@ In addition to the Python API and CLI, the project provides a **REST API** that 
    - `joblib` — model persistence
    - `matplotlib`, `seaborn` — visualisation
    - `python-dotenv` — environment variable loading
-   - `flask` — web UI and REST API server
+   - `fastapi` — REST API framework
+   - `uvicorn` — ASGI server for running the FastAPI application
 
 4. **(Optional) Install the package in editable mode for development:**
 
@@ -240,7 +240,7 @@ probabilities = model.predict_proba(X_new)[:, 1]  # probability of positive clas
 
 ### REST API
 
-The project ships a Flask-based REST API that exposes bot capabilities as HTTP endpoints. All API routes are prefixed with `/api/v1/`.
+The project ships a **FastAPI-based** REST API that exposes bot capabilities as HTTP endpoints. All API routes are prefixed with `/api/v1/`.
 
 #### Starting the API server
 
@@ -250,7 +250,13 @@ python main.py serve
 python main.py serve --port 5000
 ```
 
-The server starts on `http://0.0.0.0:5000` by default.
+The server starts on `http://0.0.0.0:5000` by default (powered by **uvicorn**).
+
+Alternatively, you can start the server directly with uvicorn:
+
+```bash
+uvicorn kael_trading_bot.api:create_app --factory --host 0.0.0.0 --port 5000
+```
 
 #### Endpoints
 
@@ -260,6 +266,8 @@ The server starts on `http://0.0.0.0:5000` by default.
 | `GET` | `/api/v1/pairs/<pair>/history` | Retrieve historical OHLCV price data for a given pair |
 | `POST` | `/api/v1/pairs/<pair>/train` | Trigger model training for a given pair |
 | `GET` | `/api/v1/pairs/<pair>/predict` | Get prediction results using the latest trained model for a pair |
+| `GET` | `/api/v1/pairs/<pair>/forecast` | Get future price forecast with confidence bands for a pair |
+| `GET` | `/api/v1/pairs/<pair>/trade-setup` | Generate an actionable trade setup (entry, stop-loss, take-profit) for a pair |
 | `GET` | `/api/v1/models` | List all trained models with their metadata and metrics |
 
 **Pairs** — `GET /api/v1/pairs`
@@ -282,17 +290,25 @@ Loads the latest trained model for a pair, fetches current data, and returns dir
 
 Lists all saved models across all pairs with version information, model type, training timestamp, metrics, and feature names.
 
+**Forecast** — `GET /api/v1/pairs/<pair>/forecast?horizon=30`
+
+Returns a future price forecast for a pair using the latest trained model. Includes predicted prices, upper/lower confidence bands, directional signal, and historical context data. The `horizon` parameter controls the number of future periods (1–365).
+
+**Trade Setup** — `GET /api/v1/pairs/<pair>/trade-setup`
+
+Generates an actionable trade setup for a pair including entry price, stop loss, take profit, model confidence, and trade direction (buy/sell/hold). Requires a trained model for the pair.
+
 ### Web UI
 
-The project includes a browser-based Web UI served by Flask. It provides server-rendered HTML pages with vanilla JavaScript for interactivity.
+The project includes a browser-based Web UI served by the FastAPI application. It provides server-rendered HTML pages with vanilla JavaScript for interactivity.
 
 #### Starting the Web UI
 
 ```bash
-python -m kael_trading_bot.web
+python main.py serve
 ```
 
-This starts the web server on `http://localhost:5000`. Open this URL in your browser to access the interface.
+This starts the API server (which also serves the Web UI) on `http://localhost:5000`. Open this URL in your browser to access the interface.
 
 #### Pages
 
@@ -348,29 +364,12 @@ src/kael_trading_bot/
 │   ├── evaluation.py   # Classification + trading metrics
 │   ├── persistence.py  # ModelPersistence (save/load with metadata)
 │   └── logging.py      # TrainingLogger (JSON-lines run history)
-├── api/                # REST API layer
-│   ├── __init__.py     # create_app export
-│   └── app.py          # Flask app with /api/v1/ endpoints (pairs, history, train, predict, models)
-└── web/                # Web UI
+├── trade_setup/        # Trade setup generation & backtesting
+│   ├── __init__.py
+│   └── backtest.py    # Backtesting utilities
+└── api/                # REST API layer (FastAPI)
     ├── __init__.py     # create_app export
-    ├── __main__.py     # Entry point (python -m kael_trading_bot.web)
-    ├── app.py          # Flask app factory with blueprint registration
-    ├── routes.py       # API router (/api/pairs, /api/training, /api/models)
-    ├── jobs.py         # TrainingJobStore — in-memory job tracking
-    ├── predictions.py  # PredictionService — model loading and prediction logic
-    ├── mock_data.py    # Mock data fallback for UI development
-    ├── templates.py    # Jinja2 template rendering helpers
-    ├── templates/      # Jinja2 HTML templates
-    │   ├── base.html   # Shared layout, navigation, CSS
-    │   ├── placeholder.html
-    │   ├── training.html   # Model training page
-    │   ├── predictions.html # Predictions page
-    │   └── pairs/
-    │       ├── index.html  # Forex pairs listing
-    │       └── detail.html # Historical price data for a single pair
-    └── static/         # CSS and JavaScript assets
-        ├── css/
-        └── js/
+    └── app.py          # FastAPI app with /api/v1/ endpoints (pairs, history, train, predict, forecast, trade-setup, models)
 
 main.py                 # CLI entry point (train, predict, serve commands)
 tests/                  # Unit tests
