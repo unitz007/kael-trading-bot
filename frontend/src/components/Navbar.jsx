@@ -1,5 +1,4 @@
 import { NavLink } from 'react-router-dom';
-import ThemeToggle from './ThemeToggle';
 
 const navItems = [
   { to: '/', label: 'Forex Pairs' },
@@ -71,13 +70,6 @@ export default function Navbar({ isOpen, onClose }) {
           ))}
         </nav>
 
-        {/* Theme toggle at bottom of sidebar */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between px-2">
-            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Theme</span>
-            <ThemeToggle />
-          </div>
-        </div>
       </aside>
     </>
   );
@@ -95,7 +87,7 @@ export function TopBar({ onMenuToggle }) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
         </svg>
       </button>
-      <ThemeToggle />
+
     </header>
   );
 }

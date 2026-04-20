@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Navbar, { TopBar } from './components/Navbar';
+import ThemeToggle from './components/ThemeToggle';
 import ForexPairsPage from './pages/ForexPairsPage';
 import TrainingPage from './pages/TrainingPage';
 import PredictionsPage from './pages/PredictionsPage';
@@ -28,6 +29,10 @@ export default function App() {
             <Route path="/live-setups" element={<LiveSetupsPage />} />
           </Routes>
         </main>
+        {/* Fixed theme toggle at bottom-left of viewport */}
+        <div className="fixed bottom-4 left-4 z-50">
+          <ThemeToggle />
+        </div>
       </div>
     </div>
   );
