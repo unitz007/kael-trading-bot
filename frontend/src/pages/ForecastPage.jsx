@@ -50,7 +50,6 @@ function drawChart(canvas, data) {
   const W = rect.width;
   const H = rect.height;
   const PAD = { top: 30, right: 70, bottom: 45, left: 15 };
-  const dark = isDarkMode();
 
   const chartW = W - PAD.left - PAD.right;
   const chartH = H - PAD.top - PAD.bottom;
