@@ -89,11 +89,18 @@ class TestTradeSetupScanner:
         )
         scanner = TradeSetupScanner(cfg)
 
-        # Patch _scan_pair_timeframe to return a result for one combo
-        # and None for the rest (no model available)
+        # Patch _scan_pair_timeframe to persist a result for one combo
+        # and return None for the rest (no model available)
         def fake_scan(pair: str, timeframe: str):
             if pair == "EURUSD=X" and timeframe == "1h":
-                return {"pair": pair, "timeframe": timeframe}
+                setup = {
+                    "pair": pair,
+                    "timeframe": timeframe,
+                    "detected_at": "2025-01-15T12:00:00+00:00",
+                    "direction": "buy",
+                }
+                scanner.store.save(setup)
+                return setup
             return None
 
         with patch.object(scanner, "_scan_pair_timeframe", side_effect=fake_scan):
