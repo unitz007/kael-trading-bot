@@ -1,6 +1,6 @@
 """Tests for the REST API layer.
 
-All endpoints are tested against the FastAPI TestClient.
+All endpoints are tested against the TestClient.
 Business-logic modules (ingestion, features, training) are mocked so
 the tests exercise only the HTTP routing, request validation, response
 formatting, and error-handling of the API layer.
@@ -28,8 +28,7 @@ import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
-# NOTE: The removed `json` and `StringIO` imports are no longer needed
-# after the migration from Flask to FastAPI TestClient.
+
 
 from kael_trading_bot.api.app import create_app
 

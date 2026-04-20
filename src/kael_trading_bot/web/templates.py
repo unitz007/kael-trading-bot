@@ -1,1 +1,1 @@
-# REMOVED: Flask web module was removed in favor of FastAPI-only architecture
+# REMOVED: Web module removed in favor of FastAPI-only architecture (see task #41)
