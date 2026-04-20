@@ -1,6 +1,6 @@
 export default function ErrorMessage({ message, onRetry }) {
   return (
-    <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800/50 dark:bg-red-900/20">
+    <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4">
       <div className="flex items-start gap-3">
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -23,7 +23,7 @@ export default function ErrorMessage({ message, onRetry }) {
         {onRetry && (
           <button
             onClick={onRetry}
-            className="shrink-0 text-sm font-medium text-red-600 hover:text-red-800 underline underline-offset-2 dark:text-red-400 dark:hover:text-red-300"
+            className="shrink-0 text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 underline underline-offset-2"
           >
             Retry
           </button>

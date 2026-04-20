@@ -71,7 +71,7 @@ export default function TrainingPage() {
         </p>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row gap-4 items-end">
           <div className="flex-1 w-full">
             <label
@@ -84,7 +84,7 @@ export default function TrainingPage() {
               id="pair-select"
               value={selectedPair}
               onChange={(e) => setSelectedPair(e.target.value)}
-              className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-primary-500 focus:ring-1 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+              className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-1 focus:ring-primary-500 focus:outline-none"
             >
               <option value="">Select a pair...</option>
               {pairs.map((pair) => (
@@ -106,7 +106,7 @@ export default function TrainingPage() {
               id="timeframe-select"
               value={selectedTimeframe}
               onChange={(e) => setSelectedTimeframe(e.target.value)}
-              className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-primary-500 focus:ring-1 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+              className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-1 focus:ring-primary-500 focus:outline-none"
             >
               {TIMEFRAME_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -119,7 +119,7 @@ export default function TrainingPage() {
           <button
             onClick={handleTrain}
             disabled={!selectedPair || training}
-            className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+            className="rounded-lg bg-primary-600 dark:bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 dark:hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
           >
             {training ? <Spinner className="h-5 w-5 inline" /> : 'Train Model'}
           </button>
@@ -136,8 +136,8 @@ export default function TrainingPage() {
       )}
 
       {result && (
-        <div className="mt-6 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden dark:border-gray-700 dark:bg-gray-800">
-          <div className="px-6 py-4 border-b border-gray-200 bg-green-50 dark:border-gray-700 dark:bg-green-900/20">
+        <div className="mt-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-green-50 dark:bg-green-900/20">
             <h2 className="text-lg font-semibold text-green-800 dark:text-green-400">
               Training Complete
             </h2>
@@ -196,7 +196,7 @@ export default function TrainingPage() {
                       Status
                     </td>
                     <td className="py-2 text-gray-900 dark:text-gray-100">
-                      <span className="inline-flex items-center rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-900/30 dark:text-green-400 dark:ring-green-800/40">
+                      <span className="inline-flex items-center rounded-full bg-green-50 dark:bg-green-900/30 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-600/20 dark:ring-green-500/30">
                         {result.status}
                       </span>
                     </td>
@@ -246,7 +246,7 @@ export default function TrainingPage() {
       )}
 
       {!loading && !training && !result && !error && (
-        <div className="mt-8 text-center text-gray-400 dark:text-gray-500">
+        <div className="mt-8 text-center text-gray-500 dark:text-gray-400">
           <p className="text-sm">No training results yet. Select a pair and click Train Model to get started.</p>
         </div>
       )}

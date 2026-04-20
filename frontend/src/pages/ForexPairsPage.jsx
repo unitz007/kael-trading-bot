@@ -61,18 +61,18 @@ export default function ForexPairsPage() {
           return (
             <div
               key={pair}
-              className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow dark:border-gray-700 dark:bg-gray-800"
+              className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm hover:shadow-md dark:hover:shadow-gray-900/50 transition-shadow"
             >
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                   {formatPair(pair)}
                 </h2>
                 {latestModel ? (
-                  <span className="inline-flex items-center rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-900/30 dark:text-green-400 dark:ring-green-800/40">
+                  <span className="inline-flex items-center rounded-full bg-green-50 dark:bg-green-900/30 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-600/20 dark:ring-green-500/30">
                     Model Ready
                   </span>
                 ) : (
-                  <span className="inline-flex items-center rounded-full bg-gray-50 px-2.5 py-0.5 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 dark:bg-gray-700 dark:text-gray-400 dark:ring-gray-600/30">
+                  <span className="inline-flex items-center rounded-full bg-gray-50 dark:bg-gray-700 px-2.5 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300 ring-1 ring-inset ring-gray-500/20 dark:ring-gray-500/30">
                     No Model
                   </span>
                 )}
@@ -81,7 +81,7 @@ export default function ForexPairsPage() {
               <div className="mt-3 space-y-1.5">
                 <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
                   <span className="font-medium text-gray-700 dark:text-gray-300 w-24">Ticker:</span>
-                  <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded dark:bg-gray-700 dark:text-gray-300">{pair}</code>
+                  <code className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-1.5 py-0.5 rounded">{pair}</code>
                 </div>
                 {latestModel && (
                   <>
@@ -106,13 +106,13 @@ export default function ForexPairsPage() {
               <div className="mt-4 flex gap-2">
                 <Link
                   to={`/training?pair=${encodeURIComponent(pair)}`}
-                  className="flex-1 rounded-lg bg-primary-600 px-3 py-2 text-center text-sm font-medium text-white hover:bg-primary-700 transition-colors dark:bg-primary-600 dark:hover:bg-primary-700"
+                  className="flex-1 rounded-lg bg-primary-600 dark:bg-primary-600 px-3 py-2 text-center text-sm font-medium text-white hover:bg-primary-700 dark:hover:bg-primary-700 transition-colors"
                 >
                   Train
                 </Link>
                 <Link
                   to={`/predictions?pair=${encodeURIComponent(pair)}`}
-                  className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-center text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                  className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-center text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   Predict
                 </Link>
