@@ -4,7 +4,7 @@ const navItems = [
   { to: '/', label: 'Forex Pairs' },
   { to: '/training', label: 'Model Training' },
   { to: '/predictions', label: 'Predictions' },
-  { to: '/forecast', label: 'Forecast' },  { to: '/trade-setup', label: 'Trade Setup' },
+  { to: '/forecast', label: 'Forecast' },  { to: '/trade-setup', label: 'Trade Setup' },  { to: '/live-setups', label: 'Live Setups' },
 ];
 
 

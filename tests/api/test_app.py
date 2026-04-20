@@ -808,6 +808,210 @@ class TestTradeSetup:
         for field in required_fields:
             assert field in data, f"Missing field '{field}' in trade setup response"
 # ---------------------------------------------------------------------------
+# Live Setups — GET /api/v1/trade-setups
+# ---------------------------------------------------------------------------
+
+
+class TestListTradeSetups:
+    """Tests for the list-trade-setups endpoint."""
+
+    def test_trade_setups_invalid_timeframe_400(self, client):
+        resp = client.get("/api/v1/trade-setups?timeframe=10m")
+        assert resp.status_code == 400
+        data = resp.json()
+        assert "error" in data
+        assert "Invalid timeframe" in data["error"]
+
+    @patch("kael_trading_bot.api.app.build_feature_matrix")
+    @patch("kael_trading_bot.api.app.ForexDataFetcher")
+    @patch("kael_trading_bot.api.app.ModelPersistence")
+    def test_trade_setups_empty_no_models(
+        self, mock_persistence_cls, mock_fetcher_cls, mock_build_features,
+        client,
+    ):
+        """When no models exist for any pair → empty list."""
+        mock_persistence = MagicMock()
+        mock_persistence.list_versions.return_value = []
+        mock_persistence_cls.return_value = mock_persistence
+
+        resp = client.get("/api/v1/trade-setups")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["setups"] == []
+        assert data["count"] == 0
+        assert data["timeframe"] == "1h"
+        assert "scanned_at" in data
+
+    @patch("kael_trading_bot.api.app.build_feature_matrix")
+    @patch("kael_trading_bot.api.app.ForexDataFetcher")
+    @patch("kael_trading_bot.api.app.ModelPersistence")
+    def test_trade_setups_returns_setups(
+        self, mock_persistence_cls, mock_fetcher_cls, mock_build_features,
+        client, sample_ohlcv_df, mock_feature_matrix,
+    ):
+        """When a model exists for a pair, a setup is returned."""
+        mock_model = MagicMock()
+        mock_model.predict.return_value = np.array([1])
+        mock_model.predict_proba.return_value = np.array([[0.3, 0.7]])
+
+        mock_metadata = MagicMock()
+        mock_metadata.feature_names = [
+            c for c in mock_feature_matrix.columns
+            if not c.startswith(("future_return", "target_"))
+        ]
+
+        mock_persistence = MagicMock()
+        mock_persistence.list_versions.return_value = ["v20240101T000000"]
+        mock_persistence.load.return_value = (mock_model, mock_metadata)
+        mock_persistence_cls.return_value = mock_persistence
+
+        mock_fetcher = MagicMock()
+        mock_fetcher.get.return_value = sample_ohlcv_df
+        mock_fetcher_cls.return_value = mock_fetcher
+
+        mock_build_features.return_value = mock_feature_matrix
+
+        resp = client.get("/api/v1/trade-setups")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["count"] > 0
+        assert len(data["setups"]) == data["count"]
+        assert data["timeframe"] == "1h"
+
+        # Check first setup has all required fields
+        setup = data["setups"][0]
+        for field in (
+            "pair", "direction", "entry_price", "stop_loss",
+            "take_profit", "confidence", "rr_ratio", "timeframe",
+            "generated_at",
+        ):
+            assert field in setup, f"Missing field '{field}' in setup"
+
+    @patch("kael_trading_bot.api.app.build_feature_matrix")
+    @patch("kael_trading_bot.api.app.ForexDataFetcher")
+    @patch("kael_trading_bot.api.app.ModelPersistence")
+    def test_trade_setups_skips_pairs_without_models(
+        self, mock_persistence_cls, mock_fetcher_cls, mock_build_features,
+        client,
+    ):
+        """Pairs without trained models should be silently skipped."""
+        mock_persistence = MagicMock()
+        mock_persistence.list_versions.return_value = []
+        mock_persistence_cls.return_value = mock_persistence
+
+        resp = client.get("/api/v1/trade-setups")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["setups"] == []
+        assert data["count"] == 0
+
+    @patch("kael_trading_bot.api.app.build_feature_matrix")
+    @patch("kael_trading_bot.api.app.ForexDataFetcher")
+    @patch("kael_trading_bot.api.app.ModelPersistence")
+    def test_trade_setups_skips_pairs_with_errors(
+        self, mock_persistence_cls, mock_fetcher_cls, mock_build_features,
+        client,
+    ):
+        """Pairs that raise errors during setup generation are skipped."""
+        mock_persistence = MagicMock()
+        mock_persistence.list_versions.side_effect = RuntimeError("db error")
+        mock_persistence_cls.return_value = mock_persistence
+
+        resp = client.get("/api/v1/trade-setups")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["setups"] == []
+
+    @patch("kael_trading_bot.api.app.build_feature_matrix")
+    @patch("kael_trading_bot.api.app.ForexDataFetcher")
+    @patch("kael_trading_bot.api.app.ModelPersistence")
+    def test_trade_setups_filter_by_timeframe(
+        self, mock_persistence_cls, mock_fetcher_cls, mock_build_features,
+        client, sample_ohlcv_df, mock_feature_matrix,
+    ):
+        """Timeframe query parameter should be passed through."""
+        mock_model = MagicMock()
+        mock_model.predict.return_value = np.array([1])
+        mock_model.predict_proba.return_value = np.array([[0.3, 0.7]])
+
+        mock_metadata = MagicMock()
+        mock_metadata.feature_names = [
+            c for c in mock_feature_matrix.columns
+            if not c.startswith(("future_return", "target_"))
+        ]
+
+        mock_persistence = MagicMock()
+        mock_persistence.list_versions.return_value = ["v1"]
+        mock_persistence.load.return_value = (mock_model, mock_metadata)
+        mock_persistence_cls.return_value = mock_persistence
+
+        mock_fetcher = MagicMock()
+        mock_fetcher.get.return_value = sample_ohlcv_df
+        mock_fetcher_cls.return_value = mock_fetcher
+
+        mock_build_features.return_value = mock_feature_matrix
+
+        resp = client.get("/api/v1/trade-setups?timeframe=4h")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["timeframe"] == "4h"
+
+    @patch("kael_trading_bot.api.app.build_feature_matrix")
+    @patch("kael_trading_bot.api.app.ForexDataFetcher")
+    @patch("kael_trading_bot.api.app.ModelPersistence")
+    def test_trade_setups_sorted_by_generated_at_desc(
+        self, mock_persistence_cls, mock_fetcher_cls, mock_build_features,
+        client, sample_ohlcv_df, mock_feature_matrix,
+    ):
+        """Setups should be sorted by generated_at descending."""
+        mock_model = MagicMock()
+        mock_model.predict.return_value = np.array([1])
+        mock_model.predict_proba.return_value = np.array([[0.3, 0.7]])
+
+        mock_metadata = MagicMock()
+        mock_metadata.feature_names = [
+            c for c in mock_feature_matrix.columns
+            if not c.startswith(("future_return", "target_"))
+        ]
+
+        mock_persistence = MagicMock()
+        mock_persistence.list_versions.return_value = ["v1"]
+        mock_persistence.load.return_value = (mock_model, mock_metadata)
+        mock_persistence_cls.return_value = mock_persistence
+
+        mock_fetcher = MagicMock()
+        mock_fetcher.get.return_value = sample_ohlcv_df
+        mock_fetcher_cls.return_value = mock_fetcher
+
+        mock_build_features.return_value = mock_feature_matrix
+
+        resp = client.get("/api/v1/trade-setups")
+        assert resp.status_code == 200
+        data = resp.json()
+
+        if len(data["setups"]) >= 2:
+            timestamps = [s["generated_at"] for s in data["setups"]]
+            assert timestamps == sorted(timestamps, reverse=True)
+
+    @patch("kael_trading_bot.api.app.build_feature_matrix")
+    @patch("kael_trading_bot.api.app.ForexDataFetcher")
+    @patch("kael_trading_bot.api.app.ModelPersistence")
+    def test_trade_setups_default_timeframe(
+        self, mock_persistence_cls, mock_fetcher_cls, mock_build_features,
+        client,
+    ):
+        """When no timeframe is provided, it defaults to 1h."""
+        mock_persistence = MagicMock()
+        mock_persistence.list_versions.return_value = []
+        mock_persistence_cls.return_value = mock_persistence
+
+        resp = client.get("/api/v1/trade-setups")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["timeframe"] == "1h"
+
+
+# ---------------------------------------------------------------------------
 # AC#11 — CLI entry point
 # ---------------------------------------------------------------------------
 
