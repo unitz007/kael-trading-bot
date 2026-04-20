@@ -36,8 +36,11 @@ from kael_trading_bot.config import (
 from kael_trading_bot.features.pipeline import FeatureConfig, build_feature_matrix
 from kael_trading_bot.ingestion import ForexDataFetcher
 from kael_trading_bot.training.persistence import ModelPersistence
-from kael_trading_bot.training.pipeline import PipelineConfig, TrainingPipelinefrom kael_trading_bot.trade_setup import generate_trade_setup
+from kael_trading_bot.training.pipeline import PipelineConfig, TrainingPipeline
+from kael_trading_bot.trade_setup import generate_trade_setup
 import pandas as pd
+
+
 
 
 logger = logging.getLogger(__name__)
@@ -701,7 +704,7 @@ def create_app() -> FastAPI:
                 content={"error": f"Internal error generating trade setup: {exc}"},
             )
 
-        @app.get("/api/v1/models", response_model=None)
+    @app.get("/api/v1/models", response_model=None)
     def list_models() -> JSONResponse | dict[str, Any]:
         """Return a list of trained models with their metadata."""
         persistence = ModelPersistence()
