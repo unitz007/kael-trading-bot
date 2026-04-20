@@ -4,6 +4,8 @@ import Navbar, { TopBar } from './components/Navbar';
 import ForexPairsPage from './pages/ForexPairsPage';
 import TrainingPage from './pages/TrainingPage';
 import PredictionsPage from './pages/PredictionsPage';
+import ForecastPage from './pages/ForecastPage';
+
 
 export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -20,6 +22,8 @@ export default function App() {
             <Route path="/" element={<ForexPairsPage />} />
             <Route path="/training" element={<TrainingPage />} />
             <Route path="/predictions" element={<PredictionsPage />} />
+            <Route path="/forecast" element={<ForecastPage />} />
+
           </Routes>
         </main>
       </div>

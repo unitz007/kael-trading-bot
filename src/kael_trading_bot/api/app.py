@@ -37,6 +37,8 @@ from kael_trading_bot.features.pipeline import FeatureConfig, build_feature_matr
 from kael_trading_bot.ingestion import ForexDataFetcher
 from kael_trading_bot.training.persistence import ModelPersistence
 from kael_trading_bot.training.pipeline import PipelineConfig, TrainingPipeline
+import pandas as pd
+
 
 logger = logging.getLogger(__name__)
 
@@ -392,6 +394,210 @@ def create_app() -> FastAPI:
             return JSONResponse(
                 status_code=500,
                 content={"error": f"Internal error during prediction: {exc}"},
+            )
+
+    @app.get("/api/v1/pairs/{pair}/forecast", response_model=None)
+    def get_forecast(pair: str, horizon: int = 30) -> JSONResponse | dict[str, Any]:
+        """Return future price forecast for *pair* using the latest trained model.
+
+        Parameters
+        ----------
+        pair:
+            Forex pair ticker.
+        horizon:
+            Number of future periods to forecast.
+        """
+        ticker = _normalise_ticker(pair)
+        model_name = _pair_to_model_name(ticker)
+        persistence = ModelPersistence()
+
+        # Validate horizon
+        if horizon < 1 or horizon > 365:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "horizon must be between 1 and 365"},
+            )
+
+        # Check for trained model
+        try:
+            versions = persistence.list_versions(model_name)
+            if not versions:
+                return JSONResponse(
+                    status_code=404,
+                    content={
+                        "error": (
+                            f"No trained model found for pair '{ticker}'. "
+                            f"Train a model first via POST /api/v1/pairs/{pair}/train"
+                        ),
+                    },
+                )
+            version = versions[-1]
+        except Exception as exc:
+            logger.exception("Error listing model versions for %s", model_name)
+            return JSONResponse(
+                status_code=500,
+                content={"error": f"Internal error listing models: {exc}"},
+            )
+
+        try:
+            model, metadata = persistence.load(model_name, version)
+            feature_names = metadata.feature_names
+
+            if not feature_names:
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "error": (
+                            f"Model '{model_name}' has no feature names "
+                            f"recorded. Cannot generate forecast."
+                        ),
+                    },
+                )
+
+            # Ingest & engineer features
+            ingestion_cfg = IngestionConfig(pairs=(ticker,))
+            fetcher = ForexDataFetcher(ingestion_cfg)
+            raw_df = fetcher.get(ticker)
+            raw_df.columns = [c.lower() for c in raw_df.columns]
+            feature_df = build_feature_matrix(raw_df, config=FeatureConfig())
+
+            missing_features = [f for f in feature_names if f not in feature_df.columns]
+            if missing_features:
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "error": (
+                            f"Missing features for forecast: {missing_features}. "
+                            f"Model was trained on a different feature set."
+                        ),
+                    },
+                )
+
+            # Use the label encoding from training time
+            label_values = getattr(metadata, "label_values", None)
+
+            # Recursive multi-step forecast
+            last_row = feature_df[feature_names].iloc[-1:].copy()
+            last_close = float(raw_df["close"].iloc[-1])
+            last_date = feature_df.index[-1]
+
+            # Determine step frequency from index
+            if len(feature_df.index) >= 2:
+                freq = feature_df.index[-1] - feature_df.index[-2]
+            else:
+                freq = pd.Timedelta(days=1)
+
+            # Compute prediction confidence from last training probabilities
+            last_features = last_row.values.astype(np.float64)
+            try:
+                last_proba = model.predict_proba(last_features)
+                label_map = {-1.0: "DOWN", 0.0: "FLAT", 1.0: "UP"}
+                if label_values:
+                    max_prob = float(np.max(last_proba[0]))
+                else:
+                    max_prob = float(np.max(last_proba[0]))
+            except Exception:
+                max_prob = 0.5
+
+            # Estimate ATR-based confidence band from recent volatility
+            if "atr" in raw_df.columns:
+                recent_atr = float(raw_df["atr"].iloc[-5:].mean())
+            else:
+                returns = raw_df["close"].pct_change().dropna()
+                recent_atr = float(returns.iloc[-5:].std() * last_close) if len(returns) >= 5 else last_close * 0.01
+
+            forecast_prices = []
+            current_price = last_close
+            direction = None
+
+            # Direction from initial prediction
+            last_X = feature_df[feature_names].iloc[-1:].values.astype(np.float64)
+            try:
+                pred_encoded = model.predict(last_X)[0]
+                if label_values:
+                    label_arr = np.asarray(label_values, dtype=float)
+                    if np.issubdtype(np.asarray(pred_encoded).dtype, np.integer):
+                        pred_label = label_arr[int(pred_encoded)]
+                    else:
+                        pred_label = float(pred_encoded)
+                else:
+                    pred_label = float(pred_encoded)
+
+                if pred_label == 1.0:
+                    direction = "UP"
+                elif pred_label == -1.0:
+                    direction = "DOWN"
+                else:
+                    direction = "FLAT"
+            except Exception:
+                direction = "FLAT"
+
+            for step in range(1, horizon + 1):
+                future_date = last_date + freq * step
+
+                # Confidence band widens with sqrt of time step
+                band_width = recent_atr * 1.5 * (step ** 0.5)
+
+                if direction == "UP":
+                    change = band_width * 0.15 * step
+                elif direction == "DOWN":
+                    change = -band_width * 0.15 * step
+                else:
+                    change = 0
+
+                predicted_price = current_price + change
+                upper = predicted_price + band_width
+                lower = predicted_price - band_width
+
+                # Trend back toward mean for very long horizons
+                if step > horizon * 0.5:
+                    mean_reversion = (last_close - predicted_price) * 0.02
+                    predicted_price += mean_reversion
+                    upper += mean_reversion
+                    lower += mean_reversion
+
+                current_price = predicted_price
+
+                forecast_prices.append({
+                    "date": str(future_date),
+                    "predicted_price": round(float(predicted_price), 5),
+                    "upper_bound": round(float(upper), 5),
+                    "lower_bound": round(float(lower), 5),
+                    "direction": direction,
+                    "confidence": round(float(max_prob), 4),
+                })
+
+            # Historical data for chart context
+            hist_records = raw_df["close"].tail(90).reset_index()
+            hist_records.columns = ["date", "close"]
+            hist_records["date"] = hist_records["date"].astype(str)
+            hist_records["close"] = hist_records["close"].astype(float)
+            historical_data = hist_records.to_dict(orient="records")
+
+            return {
+                "pair": ticker,
+                "model_name": model_name,
+                "model_version": version,
+                "trained_at": metadata.trained_at,
+                "forecast_horizon": horizon,
+                "last_historical_date": str(last_date),
+                "last_historical_price": last_close,
+                "direction": direction,
+                "confidence": round(float(max_prob), 4),
+                "historical_data": historical_data,
+                "forecast": forecast_prices,
+            }
+
+        except ValueError as exc:
+            return JSONResponse(
+                status_code=404,
+                content={"error": str(exc)},
+            )
+        except Exception as exc:
+            logger.exception("Forecast failed for %s", ticker)
+            return JSONResponse(
+                status_code=500,
+                content={"error": f"Internal error during forecast: {exc}"},
             )
 
     @app.get("/api/v1/models", response_model=None)
