@@ -35,6 +35,7 @@ function isDarkMode() {
 function drawChart(canvas, data) {
   if (!canvas || !data) return;
 
+  const dark = isDarkMode();
   const historicalData = data.historical_data || data.historicalData || [];
   const forecastData = data.forecast || [];
 
@@ -54,8 +55,28 @@ function drawChart(canvas, data) {
   const chartW = W - PAD.left - PAD.right;
   const chartH = H - PAD.top - PAD.bottom;
 
+  // Theme-aware colors
+  const colors = {
+    bg: dark ? '#111827' : '#ffffff',
+    histRegion: dark ? 'rgba(30, 58, 138, 0.15)' : 'rgba(239, 246, 255, 0.4)',
+    forecastRegion: dark ? 'rgba(120, 53, 15, 0.15)' : 'rgba(255, 247, 237, 0.5)',
+    boundaryLine: dark ? '#4b5563' : '#9ca3af',
+    gridLine: dark ? '#374151' : '#f3f4f6',
+    gridText: dark ? '#9ca3af' : '#9ca3af',
+    histLine: '#2563eb',
+    forecastLine: '#f97316',
+    confidenceBand: dark ? 'rgba(251, 146, 60, 0.15)' : 'rgba(251, 146, 60, 0.12)',
+    upperLine: 'rgba(251, 146, 60, 0.3)',
+    dotStroke: dark ? '#111827' : '#ffffff',
+    labelText: dark ? '#d1d5db' : '#6b7280',
+  };
+
   // Clear
   ctx.clearRect(0, 0, W, H);
+
+  // Background
+  ctx.fillStyle = colors.bg;
+  ctx.fillRect(0, 0, W, H);
 
   // Combine all data points
   const allPoints = [
@@ -151,7 +172,7 @@ function drawChart(canvas, data) {
   // Historical price line
   if (historicalData.length > 1) {
     ctx.beginPath();
-    ctx.strokeStyle = '#2563eb';
+    ctx.strokeStyle = colors.histLine;
     ctx.lineWidth = 2;
     ctx.lineJoin = 'round';
     historicalData.forEach((d, i) => {
@@ -166,7 +187,7 @@ function drawChart(canvas, data) {
   // Forecast price line
   if (forecastData.length > 0) {
     ctx.beginPath();
-    ctx.strokeStyle = '#f97316';
+    ctx.strokeStyle = colors.forecastLine;
     ctx.lineWidth = 2.5;
     ctx.lineJoin = 'round';
     ctx.setLineDash([5, 3]);
@@ -220,7 +241,7 @@ function drawChart(canvas, data) {
     const last = historicalData[historicalData.length - 1];
     ctx.beginPath();
     ctx.arc(xScale(new Date(last.date)), yScale(last.close), 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#2563eb';
+    ctx.fillStyle = colors.histLine;
     ctx.fill();
     ctx.strokeStyle = dark ? '#111827' : '#ffffff';
     ctx.lineWidth = 2;
@@ -231,7 +252,7 @@ function drawChart(canvas, data) {
     const last = forecastData[forecastData.length - 1];
     ctx.beginPath();
     ctx.arc(xScale(new Date(last.date)), yScale(last.predicted_price), 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#f97316';
+    ctx.fillStyle = colors.forecastLine;
     ctx.fill();
     ctx.strokeStyle = dark ? '#111827' : '#ffffff';
     ctx.lineWidth = 2;
@@ -331,6 +352,17 @@ export default function ForecastPage() {
       window.removeEventListener('resize', handleResize);
       observer.disconnect();
     };
+  }, [forecast]);
+
+  // Redraw chart when theme changes
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      if (forecast && canvasRef.current) {
+        drawChart(canvasRef.current, forecast);
+      }
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
   }, [forecast]);
 
   const fetchForecast = useCallback(async () => {

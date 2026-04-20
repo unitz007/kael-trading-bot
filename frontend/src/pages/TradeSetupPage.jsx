@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { getPairs, getTradeSetup } from '../api';
 import Spinner from '../components/Spinner';
 import ErrorMessage from '../components/ErrorMessage';
