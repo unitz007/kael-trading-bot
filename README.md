@@ -15,6 +15,7 @@ ML-based forex trading bot with technical feature engineering, model training pi
   - [Using a Trained Model](#using-a-trained-model)
   - [REST API](#rest-api)
   - [Running Tests](#running-tests)
+  - [Docker Deployment](#docker-deployment)
 - [Project Structure](#project-structure)
 - [License](#license)
 
@@ -340,6 +341,20 @@ pytest tests/test_training_pipeline.py
 # Run with coverage report
 pytest --cov=src/kael_trading_bot
 ```
+
+### Docker Deployment
+
+The project includes Docker artifacts for containerised deployment. See [DOCKER.md](DOCKER.md) for full details.
+
+```bash
+# Build and start the full stack (backend + frontend)
+docker compose up --build
+```
+
+| Service  | URL                       |
+| -------- | ------------------------- |
+| Frontend | http://localhost:3000     |
+| Backend  | http://localhost:5000     |
 
 ---
 
