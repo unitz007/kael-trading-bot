@@ -43,7 +43,7 @@ class TradeSetup:
     take_profit: float
     confidence: float
     atr: float
-    rr_ratio: float = 2.0
+    rr_ratio: float = 3.0
     rr_backtest_info: dict = field(default_factory=dict)
     model_name: str = ""
     model_version: str = ""

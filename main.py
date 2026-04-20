@@ -30,6 +30,7 @@ import pandas as pd
 from kael_trading_bot.config import IngestionConfig
 from kael_trading_bot.features.pipeline import FeatureConfig, build_feature_matrix
 from kael_trading_bot.ingestion import ForexDataFetcher
+from kael_trading_bot.telegram import TelegramNotifier
 from kael_trading_bot.training.persistence import ModelPersistence
 from kael_trading_bot.training.pipeline import PipelineConfig, TrainingPipeline
 

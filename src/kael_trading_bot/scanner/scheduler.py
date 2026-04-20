@@ -25,6 +25,7 @@ from kael_trading_bot.config import (
 from kael_trading_bot.features.pipeline import FeatureConfig, build_feature_matrix
 from kael_trading_bot.ingestion import ForexDataFetcher
 from kael_trading_bot.scanner.persistence import SetupStore
+from kael_trading_bot.telegram import TelegramNotifier
 from kael_trading_bot.trade_setup import generate_trade_setup
 from kael_trading_bot.training.persistence import ModelPersistence
 
@@ -140,6 +141,7 @@ class TradeSetupScanner:
                 result = self._scan_pair_timeframe(pair, timeframe)
                 if result is not None:
                     new_count += 1
+
             except Exception:
                 error_count += 1
                 logger.exception(
@@ -202,6 +204,8 @@ class TradeSetupScanner:
             model_version=version,
             timeframe=timeframe,
         )
+
+        TelegramNotifier().notify_trade_setup(setup=setup)
 
         # Build dict with idempotency key
         detected_at = datetime.now(timezone.utc).isoformat()
