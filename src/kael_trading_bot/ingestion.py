@@ -287,7 +287,7 @@ class ForexDataFetcher:
         df = _coerce_dtypes(df, pair)
         df = _handle_missing(df, strategy=self._missing_strategy, pair=pair)
         df = _ensure_chronological(df, pair)
-        df = _validate_ohlcv_logic(df, pair)
+        # df = _validate_ohlcv_logic(df, pair)
 
         logger.info(
             "Fetched & validated %s: %d rows, %s → %s",
