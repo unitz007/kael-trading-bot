@@ -19,6 +19,7 @@ Or via CLI::
 
 from __future__ import annotations
 
+import threading
 import logging
 import time
 from datetime import datetime, timezone
@@ -39,6 +40,11 @@ from kael_trading_bot.training.persistence import ModelPersistence
 from kael_trading_bot.training.pipeline import PipelineConfig, TrainingPipeline
 from kael_trading_bot.trade_setup import generate_trade_setup
 import pandas as pd
+
+
+# Shared scanner instance — lazily created on first use.
+_scanner: "TradeSetupScanner | None" = None
+_scanner_lock = threading.Lock()
 
 
 
@@ -809,5 +815,42 @@ def create_app() -> FastAPI:
             "models": models_info,
             "count": len(models_info),
         }
+
+
+    # ------------------------------------------------------------------
+    # Scanner query endpoint
+    # ------------------------------------------------------------------
+
+    def _get_scanner() -> "TradeSetupScanner":
+        """Return (or create) the shared scanner instance."""
+        global _scanner
+        if _scanner is None:
+            with _scanner_lock:
+                if _scanner is None:
+                    from kael_trading_bot.config import ScannerConfig
+                    from kael_trading_bot.scanner.scheduler import TradeSetupScanner
+
+                    _scanner = TradeSetupScanner(ScannerConfig())
+        return _scanner
+
+    @app.get("/api/v1/setups", response_model=None)
+    def list_setups(
+        pair: str | None = None,
+        timeframe: str | None = None,
+        limit: int = 100,
+    ) -> dict[str, Any]:
+        """Return the most recent scanned trade setups.
+
+        Results are queryable by *pair* and/or *timeframe*.
+        """
+        scanner = _get_scanner()
+        setups = scanner.store.query(pair=pair, timeframe=timeframe, limit=limit)
+        return {
+            "setups": setups,
+            "count": len(setups),
+            "pair": pair,
+            "timeframe": timeframe,
+        }
+
 
     return app
