@@ -1,11 +1,12 @@
 """Kael Trading Bot — CLI entry point.
 
-Provides two commands:
+Provides three commands:
 
 * **train** — ingest data, engineer features, train an ML model, and
   persist the trained model to disk.
 * **predict** — load a persisted model and output predictions for the
   configured forex pair.
+* **serve** — start the REST API server exposing bot capabilities.
 
 Usage examples
 --------------
@@ -13,6 +14,7 @@ Usage examples
 
     python main.py train EURUSD
     python main.py predict EURUSD
+    python main.py serve --port 5000
     python main.py --help
 """
 
@@ -31,6 +33,10 @@ from kael_trading_bot.features.pipeline import FeatureConfig, build_feature_matr
 from kael_trading_bot.ingestion import ForexDataFetcher
 from kael_trading_bot.training.persistence import ModelPersistence
 from kael_trading_bot.training.pipeline import PipelineConfig, TrainingPipeline
+
+# NOTE: Flask import is deferred (inside cmd_serve) to keep
+# `python main.py train/predict` fast when the API dependency
+# is not installed.
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -243,6 +249,20 @@ def cmd_predict(pair: str) -> None:
 # ---------------------------------------------------------------------------
 
 
+def cmd_serve(port: int) -> None:
+    """Start the REST API server."""
+    import os
+
+    os.environ.setdefault("FLASK_APP", "kael_trading_bot.api")
+    os.environ.setdefault("KAEL_API_PORT", str(port))
+
+    from kael_trading_bot.api import create_app
+
+    logger.info("Starting API server on port %d", port)
+    app = create_app()
+    app.run(host="0.0.0.0", port=port, debug=False)
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build and return the CLI argument parser."""
     parser = argparse.ArgumentParser(
@@ -253,6 +273,7 @@ def build_parser() -> argparse.ArgumentParser:
             "Commands:\n"
             "  train   Run the full training pipeline for a forex pair.\n"
             "  predict Load a trained model and output predictions.\n"
+            "  serve   Start the REST API server.\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -296,6 +317,23 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    # serve
+    serve_parser = subparsers.add_parser(
+        "serve",
+        help="Start the REST API server.",
+        description=(
+            "Start a Flask-based REST API that exposes bot capabilities "
+            "(forex pairs, historical data, model training, predictions) "
+            "as HTTP endpoints."
+        ),
+    )
+    serve_parser.add_argument(
+        "--port",
+        type=int,
+        default=5000,
+        help="Port to listen on (default: 5000).",
+    )
+
     return parser
 
 
@@ -317,6 +355,8 @@ def main() -> None:
         cmd_train(args.pair)
     elif args.command == "predict":
         cmd_predict(args.pair)
+    elif args.command == "serve":
+        cmd_serve(args.port)
     else:
         parser.print_help()
         sys.exit(1)

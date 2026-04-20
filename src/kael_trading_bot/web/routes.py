@@ -1,10 +1,7 @@
-"""REST API routes for the web UI.
+"""Route definitions for the Kael Trading Bot web UI.
 
-Provides JSON endpoints for:
-- Listing available forex pairs
-- Triggering model training
-- Polling training job status
-- Listing previously trained models
+Provides pages for browsing forex pairs, viewing historical price data,
+and placeholder pages for upcoming features.
 """
 
 from __future__ import annotations

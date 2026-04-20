@@ -1,3 +1,6 @@
+# Web framework
+flask>=3.0.0
+
 # Parquet I/O (needed by ingestion cache)
 pyarrow>=14.0.0
 
