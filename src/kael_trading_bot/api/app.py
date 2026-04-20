@@ -103,7 +103,7 @@ def create_app() -> FastAPI:
             "count": len(DEFAULT_FOREX_PAIRS),
         }
 
-    @app.get("/api/v1/pairs/{pair}/history")
+    @app.get("/api/v1/pairs/{pair}/history", response_model=None)
     def get_history(pair: str) -> JSONResponse | dict[str, Any]:
         """Return historical OHLCV price data for *pair*."""
         ticker = _normalise_ticker(pair)
@@ -144,7 +144,7 @@ def create_app() -> FastAPI:
             "data": data,
         }
 
-    @app.post("/api/v1/pairs/{pair}/train")
+    @app.post("/api/v1/pairs/{pair}/train", response_model=None)
     def train_model(pair: str) -> JSONResponse | dict[str, Any]:
         """Trigger model training for *pair*."""
         ticker = _normalise_ticker(pair)
@@ -242,7 +242,7 @@ def create_app() -> FastAPI:
                 content={"error": f"Internal error during training: {exc}"},
             )
 
-    @app.get("/api/v1/pairs/{pair}/predict")
+    @app.get("/api/v1/pairs/{pair}/predict", response_model=None)
     def get_predictions(pair: str) -> JSONResponse | dict[str, Any]:
         """Return prediction results for *pair* using the latest trained model."""
         ticker = _normalise_ticker(pair)
@@ -354,7 +354,7 @@ def create_app() -> FastAPI:
                 content={"error": f"Internal error during prediction: {exc}"},
             )
 
-    @app.get("/api/v1/models")
+    @app.get("/api/v1/models", response_model=None)
     def list_models() -> JSONResponse | dict[str, Any]:
         """Return a list of trained models with their metadata."""
         persistence = ModelPersistence()
