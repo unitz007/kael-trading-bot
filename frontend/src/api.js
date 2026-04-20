@@ -33,20 +33,20 @@ export async function getHistory(pair) {
   return request(`/pairs/${encodeURIComponent(pair)}/history`);
 }
 
-export async function trainModel(pair) {
-  return request(`/pairs/${encodeURIComponent(pair)}/train`, { method: 'POST' });
+export async function trainModel(pair, timeframe = '1h') {
+  return request(`/pairs/${encodeURIComponent(pair)}/train?timeframe=${encodeURIComponent(timeframe)}`, { method: 'POST' });
 }
 
 export async function getPredictions(pair) {
   return request(`/pairs/${encodeURIComponent(pair)}/predict`);
 }
 
-export async function getTradeSetup(pair) {
-  return request(`/pairs/${encodeURIComponent(pair)}/trade-setup`);
+export async function getTradeSetup(pair, timeframe = '1h') {
+  return request(`/pairs/${encodeURIComponent(pair)}/trade-setup?timeframe=${encodeURIComponent(timeframe)}`);
 }
 
-export async function getForecast(pair, horizon = 30) {
-  return request(`/pairs/${encodeURIComponent(pair)}/forecast?horizon=${encodeURIComponent(horizon)}`);
+export async function getForecast(pair, horizon = 30, timeframe = '1h') {
+  return request(`/pairs/${encodeURIComponent(pair)}/forecast?horizon=${encodeURIComponent(horizon)}&timeframe=${encodeURIComponent(timeframe)}`);
 }
 
 export async function getModels() {

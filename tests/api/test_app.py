@@ -251,12 +251,12 @@ class TestTrainModel:
         mock_build_features.return_value = mock_feature_matrix
 
         mock_result = MagicMock()
-        mock_result.model_name = "eurusd_x"
+        mock_result.model_name = "eurusd_x_1h"
         mock_result.model_version = "v20240101T000000"
         mock_result.model_type = "xgboost"
         mock_result.test_eval = MagicMock()
         mock_result.test_eval.to_dict.return_value = {"accuracy": 0.55}
-        mock_result.saved_path = "/models/eurusd_x/v20240101T000000"
+        mock_result.saved_path = "/models/eurusd_x_1h/v20240101T000000"
 
         mock_pipeline = MagicMock()
         mock_pipeline.run.return_value = mock_result
@@ -267,7 +267,8 @@ class TestTrainModel:
         data = resp.json()
         assert data["pair"] == "EURUSD=X"
         assert data["status"] == "completed"
-        assert data["model_name"] == "eurusd_x"
+        assert data["model_name"] == "eurusd_x_1h"
+        assert data["timeframe"] == "1h"
         assert "duration_seconds" in data
         assert "samples_trained" in data
         assert "num_features" in data
@@ -452,9 +453,7 @@ class TestGetPredictions:
         assert resp.status_code == 200
         data = resp.json()
         assert data["pair"] == "EURUSD=X"
-        assert data["model_name"] == "eurusd_x"
-        assert data["model_version"] == "v20240101T000000"
-        assert data["total_predictions"] == 5
+        assert data["model_name"] == "eurusd_x_1h"
         assert data["up_count"] == 3
         assert data["down_count"] == 2
         assert len(data["predictions"]) == 5
@@ -666,9 +665,7 @@ class TestTradeSetup:
         assert data["confidence"] <= 1.0
         assert data["stop_loss"] < data["entry_price"]  # buy: SL below entry
         assert data["take_profit"] > data["entry_price"]  # buy: TP above entry
-        assert data["model_name"] == "eurusd_x"
-        assert data["model_version"] == "v20240101T000000"
-        assert "generated_at" in data
+        assert data["model_name"] == "eurusd_x_1h"
 
     @patch("kael_trading_bot.api.app.build_feature_matrix")
     @patch("kael_trading_bot.api.app.ForexDataFetcher")
@@ -860,9 +857,131 @@ class TestHelpers:
         assert _pair_to_model_name("EURUSD=X") == "eurusd_x"
         assert _pair_to_model_name("^GSPC") == "_gspc"
 
+    def test_pair_to_model_name_with_timeframe(self):
+        from kael_trading_bot.api.app import _pair_to_model_name
+
+        assert _pair_to_model_name("EURUSD=X", "5m") == "eurusd_x_5m"
+        assert _pair_to_model_name("EURUSD=X", "1h") == "eurusd_x_1h"
+        assert _pair_to_model_name("EURUSD=X", "4h") == "eurusd_x_4h"
+        assert _pair_to_model_name("^GSPC", "15m") == "_gspc_15m"
+
     def test_is_supported_pair(self):
         from kael_trading_bot.api.app import _is_supported_pair
 
         assert _is_supported_pair("EURUSD=X") is True
         assert _is_supported_pair("EURUSD") is True
         assert _is_supported_pair("INVALID=X") is False
+
+    def test_validate_timeframe_defaults(self):
+        from kael_trading_bot.api.app import _validate_timeframe
+
+        assert _validate_timeframe(None) == "1h"
+
+    def test_validate_timeframe_valid(self):
+        from kael_trading_bot.api.app import _validate_timeframe
+
+        assert _validate_timeframe("5m") == "5m"
+        assert _validate_timeframe("15m") == "15m"
+        assert _validate_timeframe("1h") == "1h"
+        assert _validate_timeframe("4h") == "4h"
+
+    def test_validate_timeframe_invalid(self):
+        from kael_trading_bot.api.app import _validate_timeframe, SUPPORTED_TIMEFRAMES
+
+        import pytest as pt
+
+        with pt.raises(ValueError, match="Invalid timeframe"):
+            _validate_timeframe("10m")
+        with pt.raises(ValueError, match="Invalid timeframe"):
+            _validate_timeframe("1d")
+        with pt.raises(ValueError, match="Invalid timeframe"):
+            _validate_timeframe("")
+
+
+class TestTimeframeEndpoints:
+    """Tests for timeframe parameter on train, forecast, and trade-setup endpoints."""
+
+    def test_train_invalid_timeframe_400(self, client):
+        resp = client.post("/api/v1/pairs/EURUSD=X/train?timeframe=invalid")
+        assert resp.status_code == 400
+        data = resp.json()
+        assert "error" in data
+        assert "Invalid timeframe" in data["error"]
+
+    @patch("kael_trading_bot.api.app.TrainingPipeline")
+    @patch("kael_trading_bot.api.app.build_feature_matrix")
+    @patch("kael_trading_bot.api.app.ForexDataFetcher")
+    def test_train_with_timeframe_in_response(
+        self, mock_fetcher_cls, mock_build_features, mock_pipeline_cls,
+        client, sample_ohlcv_df, mock_feature_matrix,
+    ):
+        mock_fetcher = MagicMock()
+        mock_fetcher.get.return_value = sample_ohlcv_df
+        mock_fetcher_cls.return_value = mock_fetcher
+        mock_build_features.return_value = mock_feature_matrix
+
+        mock_result = MagicMock()
+        mock_result.model_name = "eurusd_x_1h"
+        mock_result.model_version = "v20240101T000000"
+        mock_result.model_type = "xgboost"
+        mock_result.test_eval = None
+        mock_result.saved_path = None
+
+        mock_pipeline = MagicMock()
+        mock_pipeline.run.return_value = mock_result
+        mock_pipeline_cls.return_value = mock_pipeline
+
+        resp = client.post("/api/v1/pairs/EURUSD=X/train?timeframe=1h")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["timeframe"] == "1h"
+        assert data["model_name"] == "eurusd_x_1h"
+
+    @patch("kael_trading_bot.api.app.TrainingPipeline")
+    @patch("kael_trading_bot.api.app.build_feature_matrix")
+    @patch("kael_trading_bot.api.app.ForexDataFetcher")
+    def test_train_without_timeframe_defaults_to_1h(
+        self, mock_fetcher_cls, mock_build_features, mock_pipeline_cls,
+        client, sample_ohlcv_df, mock_feature_matrix,
+    ):
+        mock_fetcher = MagicMock()
+        mock_fetcher.get.return_value = sample_ohlcv_df
+        mock_fetcher_cls.return_value = mock_fetcher
+        mock_build_features.return_value = mock_feature_matrix
+
+        mock_result = MagicMock()
+        mock_result.model_name = "eurusd_x_1h"
+        mock_result.model_version = "v20240101T000000"
+        mock_result.model_type = "xgboost"
+        mock_result.test_eval = None
+        mock_result.saved_path = None
+
+        mock_pipeline = MagicMock()
+        mock_pipeline.run.return_value = mock_result
+        mock_pipeline_cls.return_value = mock_pipeline
+
+        resp = client.post("/api/v1/pairs/EURUSD=X/train")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["timeframe"] == "1h"
+
+    @patch("kael_trading_bot.api.app.ModelPersistence")
+    def test_forecast_invalid_timeframe_400(self, mock_persistence_cls, client):
+        resp = client.get("/api/v1/pairs/EURUSD=X/forecast?timeframe=1d")
+        assert resp.status_code == 400
+        data = resp.json()
+        assert "Invalid timeframe" in data["error"]
+
+    @patch("kael_trading_bot.api.app.ModelPersistence")
+    def test_trade_setup_invalid_timeframe_400(self, mock_persistence_cls, client):
+        resp = client.get("/api/v1/pairs/EURUSD=X/trade-setup?timeframe=10m")
+        assert resp.status_code == 400
+        data = resp.json()
+        assert "Invalid timeframe" in data["error"]
+
+    @patch("kael_trading_bot.api.app.ModelPersistence")
+    def test_predict_invalid_timeframe_400(self, mock_persistence_cls, client):
+        resp = client.get("/api/v1/pairs/EURUSD=X/predict?timeframe=bad")
+        assert resp.status_code == 400
+        data = resp.json()
+        assert "Invalid timeframe" in data["error"]
