@@ -55,6 +55,49 @@ class TradeSetup:
         return asdict(self)
 
 
+def persist_prediction_from_setup(setup: TradeSetup) -> None:
+    """Persist a prediction record from a generated trade setup.
+
+    This is a convenience hook called at the end of :func:`generate_trade_setup`
+    to save the prediction for later accuracy evaluation.  Failures are logged
+    but never raised so that trade setup generation is never disrupted.
+    """
+    try:
+        from uuid import uuid4
+
+        from kael_trading_bot.accuracy.models import PredictionRecord
+        from kael_trading_bot.accuracy.persistence import PredictionStore
+
+        from datetime import datetime, timedelta, timezone
+
+        # Derive a reasonable horizon from the timeframe.
+        # For daily: next candle, for hourly: next hour, etc.
+        _tf_delta = {"1d": timedelta(days=1), "1h": timedelta(hours=1), "4h": timedelta(hours=4)}
+        gen_dt = datetime.fromisoformat(setup.generated_at)
+        if gen_dt.tzinfo is None:
+            gen_dt = gen_dt.replace(tzinfo=timezone.utc)
+        delta = _tf_delta.get(setup.timeframe, timedelta(days=1))
+        horizon_dt = gen_dt + delta
+
+        record = PredictionRecord(
+            id=uuid4().hex,
+            pair=setup.pair,
+            timeframe=setup.timeframe,
+            direction=setup.direction,
+            predicted_price=setup.take_profit,
+            predicted_at=setup.generated_at,
+            horizon_at=horizon_dt.isoformat(),
+            model_name=setup.model_name,
+            model_version=setup.model_version,
+            generation_ts=setup.generated_at,
+        )
+
+        store = PredictionStore()
+        store.save(record)
+    except Exception:
+        logger.debug("Failed to persist prediction record", exc_info=True)
+
+
 def generate_trade_setup(
     pair: str,
     model,
@@ -179,5 +222,8 @@ def generate_trade_setup(
         confidence * 100,
         rr_ratio,
     )
+
+    # --- Persist prediction for accuracy tracking ---
+    persist_prediction_from_setup(setup)
 
     return setup
