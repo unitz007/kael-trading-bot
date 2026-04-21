@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Trading Dashboard</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Inter, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    /* Top Bar */
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 20px;
+      background: #020617;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    .topbar h1 {
+      font-size: 18px;
+      margin: 0;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      background: #1e293b;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      color: #cbd5f5;
+      cursor: pointer;
+    }
+
+    .btn.active {
+      background: #2563eb;
+      color: white;
+    }
+
+    /* Main Layout */
+    .main {
+      display: flex;
+      flex: 1;
+    }
+
+    /* Chart Section */
+    .chart-section {
+      flex: 3;
+      padding: 20px;
+    }
+
+    .chart-container {
+      background: #020617;
+      border-radius: 12px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      padding: 15px;
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .legend {
+      display: flex;
+      gap: 15px;
+      font-size: 12px;
+    }
+
+    .legend span {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .real { background: #22c55e; }
+    .pred { background: #3b82f6; }
+
+    canvas {
+      flex: 1;
+      background: #020617;
+      border-radius: 8px;
+    }
+
+    /* Side Panel */
+    .side-panel {
+      flex: 1;
+      background: #020617;
+      border-left: 1px solid #1e293b;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .card {
+      background: #0f172a;
+      padding: 15px;
+      border-radius: 10px;
+    }
+
+    .card h3 {
+      margin: 0 0 10px;
+      font-size: 14px;
+      color: #94a3b8;
+    }
+
+    .value {
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .positive { color: #22c55e; }
+    .negative { color: #ef4444; }
+
+    .signal {
+      text-align: center;
+      padding: 10px;
+      border-radius: 8px;
+      font-weight: bold;
+    }
+
+    .buy { background: #16a34a; }
+    .sell { background: #dc2626; }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+
+    <!-- Top Bar -->
+    <div class="topbar">
+      <h1>Model vs Market</h1>
+
+      <div class="controls">
+        <button class="btn active">BTC/USDT</button>
+        <button class="btn">ETH/USDT</button>
+        <button class="btn">SOL/USDT</button>
+      </div>
+    </div>
+
+    <!-- Main -->
+    <div class="main">
+
+      <!-- Chart -->
+      <div class="chart-section">
+        <div class="chart-container">
+
+          <div class="chart-header">
+            <div>Price vs Prediction</div>
+
+            <div class="legend">
+              <span><div class="dot real"></div>Real Price</span>
+              <span><div class="dot pred"></div>Prediction</span>
+            </div>
+          </div>
+
+          <!-- Replace with real chart lib -->
+          <canvas id="chart"></canvas>
+
+        </div>
+      </div>
+
+      <!-- Side Panel -->
+      <div class="side-panel">
+
+        <div class="card">
+          <h3>Model Confidence</h3>
+          <div class="value positive">87%</div>
+        </div>
+
+        <div class="card">
+          <h3>Prediction Accuracy</h3>
+          <div class="value">72%</div>
+        </div>
+
+        <div class="card">
+          <h3>Last Signal</h3>
+          <div class="signal buy">BUY</div>
+        </div>
+
+        <div class="card">
+          <h3>Deviation</h3>
+          <div class="value negative">-1.8%</div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // Placeholder: simulate chart rendering
+    const canvas = document.getElementById('chart');
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = canvas.clientWidth;
+    canvas.height = canvas.clientHeight;
+
+    ctx.strokeStyle = "#22c55e";
+    ctx.beginPath();
+
+    for (let i = 0; i < canvas.width; i++) {
+      const y = Math.sin(i * 0.02) * 40 + canvas.height / 2;
+      ctx.lineTo(i, y);
+    }
+
+    ctx.stroke();
+
+    ctx.strokeStyle = "#3b82f6";
+    ctx.beginPath();
+
+    for (let i = 0; i < canvas.width; i++) {
+      const y = Math.sin(i * 0.02 + 0.5) * 40 + canvas.height / 2;
+      ctx.lineTo(i, y);
+    }
+
+    ctx.stroke();
+  </script>
+</body>
+</html>
