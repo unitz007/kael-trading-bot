@@ -55,6 +55,38 @@ class TradeSetup:
         return asdict(self)
 
 
+def persist_prediction_from_setup(setup: TradeSetup) -> None:
+    """Persist a prediction record from a generated trade setup.
+
+    This is a convenience hook called at the end of :func:`generate_trade_setup`
+    to save the prediction for later accuracy evaluation.  Failures are logged
+    but never raised so that trade setup generation is never disrupted.
+    """
+    try:
+        from uuid import uuid4
+
+        from kael_trading_bot.accuracy.models import PredictionRecord
+        from kael_trading_bot.accuracy.persistence import PredictionStore
+
+        record = PredictionRecord(
+            id=uuid4().hex,
+            pair=setup.pair,
+            timeframe=setup.timeframe,
+            direction=setup.direction,
+            predicted_price=setup.take_profit,
+            predicted_at=setup.generated_at,
+            horizon_at="",  # caller can set this to a specific horizon
+            model_name=setup.model_name,
+            model_version=setup.model_version,
+            generation_ts=setup.generated_at,
+        )
+
+        store = PredictionStore()
+        store.save(record)
+    except Exception:
+        logger.debug("Failed to persist prediction record", exc_info=True)
+
+
 def generate_trade_setup(
     pair: str,
     model,
@@ -179,5 +211,8 @@ def generate_trade_setup(
         confidence * 100,
         rr_ratio,
     )
+
+    # --- Persist prediction for accuracy tracking ---
+    persist_prediction_from_setup(setup)
 
     return setup
