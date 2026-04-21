@@ -111,12 +111,12 @@ function drawPredictionsChart(canvas, predictions, theme) {
 
   // Clear & background
   ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = dark ? '#111827' : '#ffffff';
+  ctx.fillStyle = dark ? '#020617' : '#ffffff';
   ctx.fillRect(0, 0, W, H);
 
   // Grid lines
-  const gridColor = dark ? '#374151' : '#f3f4f6';
-  const textColor = dark ? '#9ca3af' : '#9ca3af';
+  const gridColor = dark ? '#1e293b' : '#f3f4f6';
+  const textColor = dark ? '#64748b' : '#9ca3af';
   ctx.strokeStyle = gridColor;
   ctx.lineWidth = 1;
   const numGridLines = 5;
@@ -134,29 +134,27 @@ function drawPredictionsChart(canvas, predictions, theme) {
     ctx.fillText(price.toFixed(4), W - PAD.right + 8, y + 4);
   }
 
-  // Predicted price line (dashed orange)
+  // Real price line (solid green) — matches mock
   ctx.beginPath();
-  ctx.strokeStyle = '#f97316';
-  ctx.lineWidth = 2;
-  ctx.lineJoin = 'round';
-  ctx.setLineDash([5, 3]);
-  points.forEach((p, i) => {
-    const x = xScale(p.date);
-    const y = yScale(p.predicted);
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  });
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  // Actual price line (solid blue)
-  ctx.beginPath();
-  ctx.strokeStyle = '#2563eb';
+  ctx.strokeStyle = dark ? '#22c55e' : '#16a34a';
   ctx.lineWidth = 2;
   ctx.lineJoin = 'round';
   points.forEach((p, i) => {
     const x = xScale(p.date);
     const y = yScale(p.actual);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // Predicted price line (solid blue) — matches mock
+  ctx.beginPath();
+  ctx.strokeStyle = dark ? '#3b82f6' : '#2563eb';
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  points.forEach((p, i) => {
+    const x = xScale(p.date);
+    const y = yScale(p.predicted);
     if (i === 0) ctx.moveTo(x, y);
     else ctx.lineTo(x, y);
   });
@@ -176,16 +174,16 @@ function drawPredictionsChart(canvas, predictions, theme) {
     ctx.lineTo(x, y);
   }
   ctx.closePath();
-  ctx.fillStyle = dark ? 'rgba(139, 92, 246, 0.08)' : 'rgba(139, 92, 246, 0.06)';
+  ctx.fillStyle = dark ? 'rgba(99, 102, 241, 0.08)' : 'rgba(59, 130, 246, 0.06)';
   ctx.fill();
 
   // Dots at last points
   const lastPoint = points[points.length - 1];
-  const dotStroke = dark ? '#111827' : '#ffffff';
+  const dotStroke = dark ? '#020617' : '#ffffff';
 
   ctx.beginPath();
   ctx.arc(xScale(lastPoint.date), yScale(lastPoint.predicted), 4, 0, Math.PI * 2);
-  ctx.fillStyle = '#f97316';
+  ctx.fillStyle = dark ? '#3b82f6' : '#2563eb';
   ctx.fill();
   ctx.strokeStyle = dotStroke;
   ctx.lineWidth = 2;
@@ -193,7 +191,7 @@ function drawPredictionsChart(canvas, predictions, theme) {
 
   ctx.beginPath();
   ctx.arc(xScale(lastPoint.date), yScale(lastPoint.actual), 4, 0, Math.PI * 2);
-  ctx.fillStyle = '#2563eb';
+  ctx.fillStyle = dark ? '#22c55e' : '#16a34a';
   ctx.fill();
   ctx.strokeStyle = dotStroke;
   ctx.lineWidth = 2;
@@ -262,12 +260,12 @@ function drawDriftChart(canvas, points, theme) {
     PAD.top + chartH - ((val - minDrift) / (maxDrift - minDrift)) * chartH;
 
   ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = dark ? '#111827' : '#ffffff';
+  ctx.fillStyle = dark ? '#020617' : '#ffffff';
   ctx.fillRect(0, 0, W, H);
 
   // Grid lines
-  const gridColor = dark ? '#374151' : '#f3f4f6';
-  const textColor = dark ? '#9ca3af' : '#9ca3af';
+  const gridColor = dark ? '#1e293b' : '#f3f4f6';
+  const textColor = dark ? '#64748b' : '#9ca3af';
   ctx.strokeStyle = gridColor;
   ctx.lineWidth = 1;
   const numGridLines = 5;
@@ -289,7 +287,7 @@ function drawDriftChart(canvas, points, theme) {
   const y0 = yScale(0);
   ctx.beginPath();
   ctx.setLineDash([4, 4]);
-  ctx.strokeStyle = dark ? '#6b7280' : '#d1d5db';
+  ctx.strokeStyle = dark ? '#334155' : '#d1d5db';
   ctx.lineWidth = 1;
   ctx.moveTo(PAD.left, y0);
   ctx.lineTo(W - PAD.right, y0);
@@ -310,8 +308,8 @@ function drawDriftChart(canvas, points, theme) {
 
   // Gradient fill based on positive/negative
   const gradient = ctx.createLinearGradient(0, PAD.top, 0, PAD.top + chartH);
-  gradient.addColorStop(0, 'rgba(16, 185, 129, 0.12)');
-  gradient.addColorStop(0.5, 'rgba(16, 185, 129, 0.02)');
+  gradient.addColorStop(0, 'rgba(34, 197, 94, 0.12)');
+  gradient.addColorStop(0.5, 'rgba(34, 197, 94, 0.02)');
   gradient.addColorStop(1, 'rgba(239, 68, 68, 0.12)');
   ctx.fillStyle = gradient;
   ctx.fill();
@@ -330,11 +328,11 @@ function drawDriftChart(canvas, points, theme) {
   ctx.stroke();
 
   // Dots
-  const dotStroke = dark ? '#111827' : '#ffffff';
+  const dotStroke = dark ? '#020617' : '#ffffff';
   validPoints.forEach((p, i) => {
     ctx.beginPath();
     ctx.arc(xScale(i), yScale(p.drift), 3, 0, Math.PI * 2);
-    ctx.fillStyle = p.drift >= 0 ? '#10b981' : '#ef4444';
+    ctx.fillStyle = p.drift >= 0 ? '#22c55e' : '#ef4444';
     ctx.fill();
     ctx.strokeStyle = dotStroke;
     ctx.lineWidth = 1.5;
@@ -423,12 +421,12 @@ function drawForecastChart(canvas, dataPoints, theme) {
 
   // Clear & background
   ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = dark ? '#111827' : '#ffffff';
+  ctx.fillStyle = dark ? '#020617' : '#ffffff';
   ctx.fillRect(0, 0, W, H);
 
   // Grid lines
-  const gridColor = dark ? '#374151' : '#f3f4f6';
-  const textColor = dark ? '#9ca3af' : '#9ca3af';
+  const gridColor = dark ? '#1e293b' : '#f3f4f6';
+  const textColor = dark ? '#64748b' : '#9ca3af';
   ctx.strokeStyle = gridColor;
   ctx.lineWidth = 1;
   const numGridLines = 5;
@@ -466,18 +464,17 @@ function drawForecastChart(canvas, dataPoints, theme) {
       }
     }
     ctx.closePath();
-    ctx.fillStyle = dark ? 'rgba(139, 92, 246, 0.08)' : 'rgba(139, 92, 246, 0.06)';
+    ctx.fillStyle = dark ? 'rgba(99, 102, 241, 0.08)' : 'rgba(59, 130, 246, 0.06)';
     ctx.fill();
   }
 
-  // Forecast price line (dashed orange)
+  // Forecast price line (solid blue)
   const forecastPts = dataPoints.filter((d) => d.forecast_price != null);
   if (forecastPts.length >= 2) {
     ctx.beginPath();
-    ctx.strokeStyle = '#f97316';
+    ctx.strokeStyle = dark ? '#3b82f6' : '#2563eb';
     ctx.lineWidth = 2;
     ctx.lineJoin = 'round';
-    ctx.setLineDash([5, 3]);
     forecastPts.forEach((d, i) => {
       const x = xScale(new Date(d.timestamp));
       const y = yScale(d.forecast_price);
@@ -485,12 +482,11 @@ function drawForecastChart(canvas, dataPoints, theme) {
       else ctx.lineTo(x, y);
     });
     ctx.stroke();
-    ctx.setLineDash([]);
   }
 
-  // Live price line (solid blue)
+  // Live price line (solid green) — matches mock
   ctx.beginPath();
-  ctx.strokeStyle = '#2563eb';
+  ctx.strokeStyle = dark ? '#22c55e' : '#16a34a';
   ctx.lineWidth = 2;
   ctx.lineJoin = 'round';
   livePoints.forEach((d, i) => {
@@ -502,11 +498,11 @@ function drawForecastChart(canvas, dataPoints, theme) {
   ctx.stroke();
 
   // Dots at last points
-  const dotStroke = dark ? '#111827' : '#ffffff';
+  const dotStroke = dark ? '#020617' : '#ffffff';
   const lastLive = livePoints[livePoints.length - 1];
   ctx.beginPath();
   ctx.arc(xScale(new Date(lastLive.timestamp)), yScale(lastLive.live_price), 4, 0, Math.PI * 2);
-  ctx.fillStyle = '#2563eb';
+  ctx.fillStyle = dark ? '#22c55e' : '#16a34a';
   ctx.fill();
   ctx.strokeStyle = dotStroke;
   ctx.lineWidth = 2;
@@ -516,7 +512,7 @@ function drawForecastChart(canvas, dataPoints, theme) {
     const lastForecast = forecastPts[forecastPts.length - 1];
     ctx.beginPath();
     ctx.arc(xScale(new Date(lastForecast.timestamp)), yScale(lastForecast.forecast_price), 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#f97316';
+    ctx.fillStyle = dark ? '#3b82f6' : '#2563eb';
     ctx.fill();
     ctx.strokeStyle = dotStroke;
     ctx.lineWidth = 2;
@@ -561,12 +557,62 @@ function drawEmptyChart(canvas, theme, message) {
   canvas.height = rect.height * dpr;
   ctx.scale(dpr, dpr);
 
-  ctx.fillStyle = dark ? '#111827' : '#ffffff';
+  ctx.fillStyle = dark ? '#020617' : '#ffffff';
   ctx.fillRect(0, 0, rect.width, rect.height);
-  ctx.fillStyle = dark ? '#9ca3af' : '#6b7280';
+  ctx.fillStyle = dark ? '#64748b' : '#9ca3af';
   ctx.font = '13px Inter, system-ui, sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText(message || 'No data', rect.width / 2, rect.height / 2);
+}
+
+// ---------------------------------------------------------------------------
+// Side Panel Cards
+// ---------------------------------------------------------------------------
+
+function StatCard({ label, value, valueClass }) {
+  return (
+    <div className="rounded-xl bg-slate-900/60 dark:bg-slate-800/40 p-4">
+      <h3 className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">
+        {label}
+      </h3>
+      <div className={`text-xl font-bold font-mono ${valueClass || 'text-slate-100'}`}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function SignalBadge({ direction, confidence }) {
+  const isBuy = direction?.toUpperCase() === 'BUY' || direction?.toUpperCase() === 'UP';
+  const isSell = direction?.toUpperCase() === 'SELL' || direction?.toUpperCase() === 'DOWN';
+
+  return (
+    <div className="rounded-xl bg-slate-900/60 dark:bg-slate-800/40 p-4">
+      <h3 className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3">
+        Last Signal
+      </h3>
+      {direction ? (
+        <>
+          <div className={`text-center py-2.5 px-4 rounded-lg font-bold text-sm uppercase tracking-wide ${
+            isBuy
+              ? 'bg-green-600/20 text-green-400 ring-1 ring-green-500/30'
+              : isSell
+                ? 'bg-red-600/20 text-red-400 ring-1 ring-red-500/30'
+                : 'bg-slate-700/40 text-slate-300 ring-1 ring-slate-600/30'
+          }`}>
+            {direction}
+          </div>
+          {confidence != null && (
+            <p className="mt-2 text-center text-xs text-slate-500 dark:text-slate-400">
+              Confidence: {(confidence * 100).toFixed(1)}%
+            </p>
+          )}
+        </>
+      ) : (
+        <p className="text-sm text-slate-500 dark:text-slate-400">No signal</p>
+      )}
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -802,55 +848,83 @@ export default function ChartPage() {
     };
   }, [predictions, wsData]);
 
+  // ---- Derived stats ----
+  const predStats = (() => {
+    if (!predictions?.predictions?.length) return null;
+    const preds = predictions.predictions;
+    const evaluated = preds.filter(p => p.status === 'correct' || p.status === 'incorrect');
+    const accuracy = evaluated.length > 0
+      ? ((evaluated.filter(p => p.status === 'correct').length / evaluated.length) * 100).toFixed(1)
+      : '—';
+    const latestPred = preds[0];
+    const lastSignal = latestPred?.status === 'correct' ? 'Correct' : latestPred?.status === 'incorrect' ? 'Incorrect' : 'Pending';
+    const lastDrift = latestPred?.percentage_drift;
+    return { accuracy, lastSignal, lastDrift, total: predictions.total || preds.length };
+  })();
+
+  const forecastStats = (() => {
+    if (wsData.length === 0) return null;
+    const latest = wsData[wsData.length - 1];
+    return {
+      livePrice: latest.live_price,
+      forecastPrice: latest.forecast_price,
+      drift: latest.drift_pct,
+      direction: forecastMeta?.direction,
+      confidence: forecastMeta?.confidence,
+    };
+  })();
+
   // ---- Render ----
   if (pairsLoading) return <Spinner className="py-20" />;
 
+  // Active stats for side panel
+  const stats = subView === 'predictions' ? predStats : forecastStats;
+
   return (
-    <div>
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Chart</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Visualise prediction accuracy and live forecast performance.
-        </p>
-      </div>
-
-      {/* Controls */}
-      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm mb-6">
-        <div className="flex flex-col sm:flex-row gap-4 items-end">
+    <div className="flex flex-col h-[calc(100vh-4rem)] -m-4 sm:-m-6 lg:-m-8">
+      {/* Top Bar — matches mock's topbar */}
+      <div className="flex items-center justify-between px-4 sm:px-6 py-3 bg-slate-900 dark:bg-slate-950 border-b border-slate-700 dark:border-slate-800 shrink-0">
+        <h1 className="text-base sm:text-lg font-semibold text-slate-100 dark:text-slate-200">
+          Model vs Market
+        </h1>
+        <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto">
           {/* Sub-view toggle */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              View
-            </label>
-            <div className="flex rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
-              {SUB_VIEWS.map((sv) => (
-                <button
-                  key={sv.value}
-                  onClick={() => setSubView(sv.value)}
-                  className={`px-4 py-2 text-sm font-medium transition-colors ${
-                    subView === sv.value
-                      ? 'bg-primary-600 text-white'
-                      : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  {sv.label}
-                </button>
-              ))}
-            </div>
-          </div>
+          {SUB_VIEWS.map((sv) => (
+            <button
+              key={sv.value}
+              onClick={() => setSubView(sv.value)}
+              className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
+                subView === sv.value
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
+              }`}
+            >
+              {sv.label}
+            </button>
+          ))}
 
-          {/* Pair selector */}
-          <div className="flex-1">
-            <label htmlFor="chart-pair-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Forex Pair
-            </label>
+          <div className="w-px h-5 bg-slate-700 dark:bg-slate-700 mx-1" />
+
+          {/* Pair buttons — matches mock's pair selector */}
+          {pairs.slice(0, 6).map((pair) => (
+            <button
+              key={pair}
+              onClick={() => setSelectedPair(pair)}
+              className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
+                selectedPair === pair
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
+              }`}
+            >
+              {formatPair(pair)}
+            </button>
+          ))}
+
+          {pairs.length > 6 && (
             <select
-              id="chart-pair-select"
               value={selectedPair}
               onChange={(e) => setSelectedPair(e.target.value)}
-              disabled={loading}
-              className="block w-full max-w-xs rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-4 py-2.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-200 dark:focus:ring-primary-800 focus:outline-none disabled:opacity-50"
+              className="bg-slate-800 text-slate-300 text-xs sm:text-sm rounded-md px-2 py-1.5 border border-slate-700 focus:border-blue-500 focus:outline-none dark:bg-slate-800 dark:text-slate-400"
             >
               {pairs.map((pair) => (
                 <option key={pair} value={pair}>
@@ -858,287 +932,219 @@ export default function ChartPage() {
                 </option>
               ))}
             </select>
-          </div>
+          )}
 
-          {/* Timeframe toggle */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Timeframe
-            </label>
-            <div className="flex rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
-              {TIMEFRAMES.map((tf) => (
-                <button
-                  key={tf.value}
-                  onClick={() => setSelectedTimeframe(tf.value)}
-                  className={`px-3 py-2 text-sm font-medium transition-colors ${
-                    selectedTimeframe === tf.value
-                      ? 'bg-primary-600 text-white'
-                      : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  {tf.label}
-                </button>
-              ))}
-            </div>
-          </div>
+          <div className="w-px h-5 bg-slate-700 dark:bg-slate-700 mx-1" />
+
+          {/* Timeframe buttons */}
+          {TIMEFRAMES.map((tf) => (
+            <button
+              key={tf.value}
+              onClick={() => setSelectedTimeframe(tf.value)}
+              className={`px-2.5 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
+                selectedTimeframe === tf.value
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
+              }`}
+            >
+              {tf.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Loading banner */}
-      {loading && subView === 'predictions' && (
-        <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-5 mb-6">
-          <div className="flex items-center gap-3">
-            <Spinner className="py-0" />
-            <p className="text-sm text-blue-700 dark:text-blue-200">
-              Loading prediction data for {formatPair(selectedPair)}…
-            </p>
+      {/* Main Layout — chart area + side panel, matches mock's flex layout */}
+      <div className="flex flex-1 min-h-0 bg-slate-950 dark:bg-[#020617]">
+        {/* Chart Area — flex:3 in mock */}
+        <div className="flex-3 p-3 sm:p-5 flex flex-col min-w-0">
+          <div className="bg-slate-900 dark:bg-[#020617] rounded-xl flex-1 flex flex-col p-3 sm:p-4 min-h-0 border border-slate-800 dark:border-slate-800/50">
+            {/* Chart Header */}
+            <div className="flex items-center justify-between mb-2 sm:mb-3 shrink-0">
+              <div className="text-sm font-medium text-slate-300 dark:text-slate-400">
+                {subView === 'predictions' ? 'Price vs Prediction' : 'Forecast vs Live'}
+              </div>
+              <div className="flex items-center gap-4 text-xs text-slate-400 dark:text-slate-500">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-green-500 inline-block" />
+                  {subView === 'predictions' ? 'Real Price' : 'Live'}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-blue-500 inline-block" />
+                  {subView === 'predictions' ? 'Prediction' : 'Forecast'}
+                </span>
+              </div>
+            </div>
+
+            {/* Loading banner */}
+            {loading && subView === 'predictions' && (
+              <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-3 mb-3 shrink-0">
+                <div className="flex items-center gap-2">
+                  <Spinner className="py-0" />
+                  <p className="text-xs text-blue-300">
+                    Loading prediction data for {formatPair(selectedPair)}…
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Error */}
+            {error && !loading && <ErrorMessage message={error} />}
+
+            {/* WebSocket status */}
+            {subView === 'forecast' && (
+              <div className="flex items-center gap-2 mb-2 shrink-0">
+                <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                  wsConnected
+                    ? 'bg-green-500/10 text-green-400 ring-1 ring-green-500/20'
+                    : wsError
+                      ? 'bg-red-500/10 text-red-400 ring-1 ring-red-500/20'
+                      : 'bg-yellow-500/10 text-yellow-400 ring-1 ring-yellow-500/20'
+                }`}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${wsConnected ? 'bg-green-400 animate-pulse' : wsError ? 'bg-red-400' : 'bg-yellow-400 animate-pulse'}`} />
+                  {wsConnected ? 'Live' : wsError ? 'Disconnected' : 'Connecting…'}
+                </span>
+                {wsError && (
+                  <span className="text-xs text-red-400">{wsError}</span>
+                )}
+              </div>
+            )}
+
+            {/* Canvas — fills remaining space */}
+            <div className="flex-1 min-h-0">
+              {subView === 'predictions' ? (
+                <canvas
+                  ref={predCanvasRef}
+                  style={{ width: '100%', height: '100%' }}
+                  aria-label="Chart comparing predicted prices against actual market prices"
+                  role="img"
+                />
+              ) : (
+                <canvas
+                  ref={forecastCanvasRef}
+                  style={{ width: '100%', height: '100%' }}
+                  aria-label="Live chart comparing forecasted prices against live market prices"
+                  role="img"
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Drift Chart — below main chart */}
+          <div className="bg-slate-900 dark:bg-[#020617] rounded-xl mt-3 flex flex-col p-3 sm:p-4 border border-slate-800 dark:border-slate-800/50"
+            style={{ height: '180px', minHeight: '140px' }}
+          >
+            <div className="text-sm font-medium text-slate-300 dark:text-slate-400 mb-2 shrink-0">
+              Percentage Drift
+            </div>
+            <div className="flex-1 min-h-0">
+              {subView === 'predictions' ? (
+                <canvas
+                  ref={predDriftCanvasRef}
+                  style={{ width: '100%', height: '100%' }}
+                  aria-label="Chart showing percentage drift between predicted and actual prices"
+                  role="img"
+                />
+              ) : (
+                <canvas
+                  ref={forecastDriftCanvasRef}
+                  style={{ width: '100%', height: '100%' }}
+                  aria-label="Chart showing percentage drift between forecasted and live prices"
+                  role="img"
+                />
+              )}
+            </div>
           </div>
         </div>
-      )}
 
-      {/* Error */}
-      {error && !loading && <ErrorMessage message={error} />}
-
-      {/* ==================== PREDICTIONS SUB-VIEW ==================== */}
-      {subView === 'predictions' && !loading && !error && (
-        <>
-          {/* Predicted vs Actual Chart */}
-          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm mb-6">
-            <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Predicted vs Actual Prices
-              </h2>
-              <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-                <span className="flex items-center gap-1.5">
-                  <span
-                    className="h-0.5 w-4 inline-block"
-                    style={{ borderTop: '2px dashed #f97316', background: 'none', height: 0 }}
-                  />
-                  Predicted
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="h-0.5 w-4 bg-blue-600 inline-block" />
-                  Actual
-                </span>
-              </div>
-            </div>
-            <div className="p-4">
-              <canvas
-                ref={predCanvasRef}
-                style={{ width: '100%', height: '400px' }}
-                aria-label="Chart comparing predicted prices against actual market prices"
-                role="img"
+        {/* Side Panel — matches mock's side-panel */}
+        <div className="w-64 shrink-0 bg-slate-950 dark:bg-[#020617] border-l border-slate-800 dark:border-slate-800/50 p-4 flex flex-col gap-3 overflow-y-auto hidden lg:flex">
+          {subView === 'predictions' && stats ? (
+            <>
+              <StatCard
+                label="Prediction Accuracy"
+                value={`${stats.accuracy}%`}
+                valueClass={Number(stats.accuracy) >= 60 ? 'text-green-400' : Number(stats.accuracy) < 50 ? 'text-red-400' : 'text-slate-100'}
               />
-            </div>
-          </div>
-
-          {/* Drift Chart */}
-          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm mb-6">
-            <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Percentage Drift (Predicted vs Actual)
-              </h2>
-            </div>
-            <div className="p-4">
-              <canvas
-                ref={predDriftCanvasRef}
-                style={{ width: '100%', height: '250px' }}
-                aria-label="Chart showing percentage drift between predicted and actual prices"
-                role="img"
+              <StatCard
+                label="Total Predictions"
+                value={stats.total?.toLocaleString()}
               />
-            </div>
-          </div>
-
-          {/* Predictions Table */}
-          {predictions?.predictions?.length > 0 && (
-            <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden mb-6">
-              <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-                <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  Prediction Records
-                  <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">
-                    {predictions.total?.toLocaleString()} total
-                  </span>
-                </h2>
+              <SignalBadge direction={stats.lastSignal} />
+              <StatCard
+                label="Last Deviation"
+                value={stats.lastDrift != null ? formatDrift(stats.lastDrift) : '—'}
+                valueClass={stats.lastDrift >= 0 ? 'text-green-400' : 'text-red-400'}
+              />
+            </>
+          ) : subView === 'forecast' && forecastStats ? (
+            <>
+              <StatCard
+                label="Latest Live Price"
+                value={forecastStats.livePrice?.toFixed(4) ?? '—'}
+              />
+              <StatCard
+                label="Forecast Price"
+                value={forecastStats.forecastPrice?.toFixed(4) ?? '—'}
+                valueClass="text-blue-400"
+              />
+              <SignalBadge direction={forecastStats.direction} confidence={forecastStats.confidence} />
+              <StatCard
+                label="Current Drift"
+                value={forecastStats.drift != null ? formatDriftAbs(forecastStats.drift) : '—'}
+                valueClass={forecastStats.drift >= 0 ? 'text-green-400' : 'text-red-400'}
+              />
+            </>
+          ) : (
+            <>
+              <div className="rounded-xl bg-slate-900/60 dark:bg-slate-800/40 p-4">
+                <h3 className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">
+                  {subView === 'predictions' ? 'Accuracy' : 'Status'}
+                </h3>
+                <div className="text-slate-500 dark:text-slate-400 text-sm">
+                  {subView === 'predictions' ? 'Loading data…' : 'Waiting for live feed…'}
+                </div>
               </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead className="bg-gray-50 dark:bg-gray-700/50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Predicted</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actual</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Drift</th>
-                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {predictions.predictions.map((pred) => (
-                      <tr key={pred.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap">
-                          {pred.predicted_at ? new Date(pred.predicted_at).toLocaleString() : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-right text-gray-900 dark:text-gray-100 font-mono">
-                          {pred.target_price != null ? pred.target_price.toFixed(4) : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-right text-gray-900 dark:text-gray-100 font-mono">
-                          {pred.actual_price != null ? pred.actual_price.toFixed(4) : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-right font-mono">
-                          {pred.percentage_drift != null ? (
-                            <span className={pred.percentage_drift >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
-                              {formatDrift(pred.percentage_drift)}
-                            </span>
-                          ) : (
-                            <span className="text-gray-400">—</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-center whitespace-nowrap">
-                          <span
-                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                              pred.status === 'correct'
-                                ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-600/20 dark:ring-green-500/30'
-                                : pred.status === 'incorrect'
-                                  ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 ring-1 ring-inset ring-red-600/20 dark:ring-red-500/30'
-                                  : 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 ring-1 ring-inset ring-yellow-600/20 dark:ring-yellow-500/30'
-                            }`}
-                          >
-                            <span
-                              className={`h-1.5 w-1.5 rounded-full ${
-                                pred.status === 'correct'
-                                  ? 'bg-green-500 dark:bg-green-400'
-                                  : pred.status === 'incorrect'
-                                    ? 'bg-red-500 dark:bg-red-400'
-                                    : 'bg-yellow-500 dark:bg-yellow-400'
-                              }`}
-                            />
-                            {pred.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            </>
+          )}
+
+          {/* Predictions Table (in side panel, scrollable) */}
+          {subView === 'predictions' && predictions?.predictions?.length > 0 && (
+            <div className="flex-1 min-h-0 rounded-xl bg-slate-900/60 dark:bg-slate-800/40 p-3 flex flex-col overflow-hidden mt-auto">
+              <h3 className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2 shrink-0">
+                Recent Records
+              </h3>
+              <div className="flex-1 overflow-y-auto space-y-1.5">
+                {predictions.predictions.slice(0, 20).map((pred) => (
+                  <div key={pred.id} className="flex items-center justify-between text-xs py-1.5 px-2 rounded-lg hover:bg-slate-800/40">
+                    <span className="text-slate-400 dark:text-slate-500 whitespace-nowrap">
+                      {pred.predicted_at ? formatDate(pred.predicted_at) : '—'}
+                    </span>
+                    <span className={`font-mono font-medium ${pred.percentage_drift >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {formatDrift(pred.percentage_drift)}
+                    </span>
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                      pred.status === 'correct'
+                        ? 'bg-green-500/10 text-green-400'
+                        : pred.status === 'incorrect'
+                          ? 'bg-red-500/10 text-red-400'
+                          : 'bg-yellow-500/10 text-yellow-400'
+                    }`}>
+                      <span className={`h-1 w-1 rounded-full ${
+                        pred.status === 'correct'
+                          ? 'bg-green-400'
+                          : pred.status === 'incorrect'
+                            ? 'bg-red-400'
+                            : 'bg-yellow-400'
+                      }`} />
+                      {pred.status}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           )}
-
-          {/* Empty state for predictions */}
-          {predictions && predictions.predictions?.length === 0 && (
-            <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-12 shadow-sm text-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
-              </svg>
-              <h3 className="mt-4 text-sm font-semibold text-gray-900 dark:text-gray-100">No Prediction Data</h3>
-              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                No prediction records found for {formatPair(selectedPair)} with the selected timeframe.
-              </p>
-            </div>
-          )}
-        </>
-      )}
-
-      {/* ==================== FORECAST SUB-VIEW ==================== */}
-      {subView === 'forecast' && (
-        <>
-          {/* Connection status */}
-          <div className="mb-4 flex items-center gap-3">
-            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
-              wsConnected
-                ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-600/20'
-                : wsError
-                  ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 ring-1 ring-inset ring-red-600/20'
-                  : 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 ring-1 ring-inset ring-yellow-600/20'
-            }`}>
-              <span className={`h-2 w-2 rounded-full ${wsConnected ? 'bg-green-500 animate-pulse' : wsError ? 'bg-red-500' : 'bg-yellow-500 animate-pulse'}`} />
-              {wsConnected ? 'Live' : wsError ? 'Disconnected' : 'Connecting…'}
-            </span>
-            {forecastMeta && (
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                Forecast direction: <span className="font-medium text-gray-900 dark:text-gray-100">{forecastMeta.direction}</span>
-                {' · '}Confidence: <span className="font-medium text-gray-900 dark:text-gray-100">{forecastMeta.confidence != null ? `${(forecastMeta.confidence * 100).toFixed(1)}%` : '—'}</span>
-              </span>
-            )}
-            {wsError && (
-              <span className="text-xs text-red-600 dark:text-red-400">{wsError}</span>
-            )}
-          </div>
-
-          {/* Forecast vs Live Chart */}
-          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm mb-6">
-            <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Forecast vs Live Prices
-              </h2>
-              <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-                <span className="flex items-center gap-1.5">
-                  <span className="h-0.5 w-4 bg-blue-600 inline-block" />
-                  Live
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span
-                    className="h-0.5 w-4 inline-block"
-                    style={{ borderTop: '2px dashed #f97316', background: 'none', height: 0 }}
-                  />
-                  Forecast
-                </span>
-              </div>
-            </div>
-            <div className="p-4">
-              <canvas
-                ref={forecastCanvasRef}
-                style={{ width: '100%', height: '400px' }}
-                aria-label="Live chart comparing forecasted prices against live market prices"
-                role="img"
-              />
-            </div>
-          </div>
-
-          {/* Live Drift Chart */}
-          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm mb-6">
-            <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Percentage Drift (Forecast vs Live)
-              </h2>
-            </div>
-            <div className="p-4">
-              <canvas
-                ref={forecastDriftCanvasRef}
-                style={{ width: '100%', height: '250px' }}
-                aria-label="Chart showing percentage drift between forecasted and live prices"
-                role="img"
-              />
-            </div>
-          </div>
-
-          {/* Live data points summary */}
-          {wsData.length > 0 && (
-            <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm mb-6">
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="rounded-lg bg-gray-50 dark:bg-gray-900/50 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Latest Live Price</p>
-                  <p className="mt-1 text-xl font-bold text-gray-900 dark:text-gray-100 font-mono">
-                    {wsData[wsData.length - 1]?.live_price?.toFixed(4) ?? '—'}
-                  </p>
-                </div>
-                <div className="rounded-lg bg-gray-50 dark:bg-gray-900/50 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Forecast Price</p>
-                  <p className="mt-1 text-xl font-bold text-gray-900 dark:text-gray-100 font-mono">
-                    {wsData[wsData.length - 1]?.forecast_price?.toFixed(4) ?? '—'}
-                  </p>
-                </div>
-                <div className="rounded-lg bg-gray-50 dark:bg-gray-900/50 p-4">
-                  <p className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Current Drift</p>
-                  <p className={`mt-1 text-xl font-bold font-mono ${
-                    wsData[wsData.length - 1]?.drift_pct >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                  }`}>
-                    {formatDriftAbs(wsData[wsData.length - 1]?.drift_pct)}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-        </>
-      )}
+        </div>
+      </div>
     </div>
   );
 }
