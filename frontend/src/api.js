@@ -56,5 +56,30 @@ export async function getTradeSetups(timeframe = '1h') {
 export async function getModels() {
   return request('/models');
 }
+export async function getAccuracySummary(pair, timeframe) {
+  const params = new URLSearchParams();
+  if (pair) params.set('pair', pair);
+  if (timeframe) params.set('timeframe', timeframe);
+  const qs = params.toString() ? `?${params.toString()}` : '';
+  return request(`/accuracy/summary${qs}`);
+}
+
+export async function getAccuracyPredictions(pair, timeframe, status, page = 1, pageSize = 20) {
+  const params = new URLSearchParams();
+  if (pair) params.set('pair', pair);
+  if (timeframe) params.set('timeframe', timeframe);
+  if (status) params.set('status', status);
+  params.set('page', page);
+  params.set('page_size', pageSize);
+  return request(`/accuracy/predictions?${params.toString()}`);
+}
+
+export async function getAccuracyTrend(pair, timeframe, period = 'week') {
+  const params = new URLSearchParams();
+  if (pair) params.set('pair', pair);
+  if (timeframe) params.set('timeframe', timeframe);
+  params.set('period', period);
+  return request(`/accuracy/trend?${params.toString()}`);
+}
 
 export { ApiError };

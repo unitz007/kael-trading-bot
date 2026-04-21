@@ -7,6 +7,7 @@ const navItems = [
   { to: '/forecast', label: 'Forecast' },
   { to: '/trade-setup', label: 'Trade Setup' },
   { to: '/live-setups', label: 'Live Setups' },
+  { to: '/accuracy', label: 'Accuracy' },
 ];
 
 export default function Navbar({ isOpen, onClose }) {
