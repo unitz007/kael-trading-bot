@@ -5,5 +5,6 @@ as HTTP endpoints via FastAPI.
 """
 
 from kael_trading_bot.api.app import create_app  # noqa: F401
+from kael_trading_bot.api.websocket import router as ws_router  # noqa: F401
 
-__all__ = ["create_app"]
+__all__ = ["create_app", "ws_router"]

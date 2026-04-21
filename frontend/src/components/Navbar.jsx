@@ -7,6 +7,7 @@ const navItems = [
   { to: '/forecast', label: 'Forecast' },
   { to: '/trade-setup', label: 'Trade Setup' },
   { to: '/live-setups', label: 'Live Setups' },
+  { to: '/chart', label: 'Chart' },
   { to: '/accuracy', label: 'Accuracy' },
 ];
 

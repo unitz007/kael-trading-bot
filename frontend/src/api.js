@@ -82,4 +82,13 @@ export async function getAccuracyTrend(pair, timeframe, period = 'week') {
   return request(`/accuracy/trend?${params.toString()}`);
 }
 
+export function createChartWebSocket(pair, timeframe) {
+  const params = new URLSearchParams();
+  params.set('pair', pair);
+  params.set('timeframe', timeframe);
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = window.location.host;
+  return new WebSocket(`${protocol}//${host}/ws/chart?${params.toString()}`);
+}
+
 export { ApiError };
