@@ -158,10 +158,39 @@ def _fetch_forecast(pair: str, timeframe: str) -> dict[str, Any] | None:
 
         last_close = float(raw_df["close"].iloc[-1])
 
+        # Compute a proper forecast price based on direction and recent
+        # volatility, using the same ATR-based approach as the
+        # ``/forecast`` REST endpoint so the forecast price actually
+        # reflects the model's predicted movement rather than simply
+        # echoing the current close.
+        forecast_price = None
+        try:
+            if "atr" in raw_df.columns:
+                recent_atr = float(raw_df["atr"].iloc[-5:].mean())
+            else:
+                returns = raw_df["close"].pct_change().dropna()
+                recent_atr = (
+                    float(returns.iloc[-5:].std() * last_close)
+                    if len(returns) >= 5
+                    else last_close * 0.01
+                )
+
+            change = recent_atr * 0.15
+            if direction == "UP":
+                forecast_price = last_close + change
+            elif direction == "DOWN":
+                forecast_price = last_close - change
+            else:
+                forecast_price = last_close
+            forecast_price = float(forecast_price)
+        except Exception:
+            forecast_price = last_close
+
         return {
             "direction": direction,
             "confidence": round(confidence, 4),
             "last_price": last_close,
+            "forecast_price": round(forecast_price, 5),
             "model_name": model_name,
             "model_version": version,
         }
@@ -245,7 +274,10 @@ async def websocket_chart(
                 drift_pct = None
                 forecast_price = None
                 if last_forecast:
-                    forecast_price = last_forecast["last_price"]
+                    forecast_price = last_forecast.get(
+                        "forecast_price",
+                        last_forecast.get("last_price"),
+                    )
                     if forecast_price and forecast_price != 0:
                         drift_pct = round(
                             ((live_price - forecast_price) / forecast_price) * 100, 4
