@@ -101,8 +101,13 @@ class TelegramNotifier:
             logger.debug("Duplicate trade setup notification skipped: %s", key)
             return False
 
-        message = self._format_message(setup)
-        return self._send(message, key)
+        # checks if setup has a confidence greater than threshold.
+        MAX_CONFIDENCE_THRESHOLD = os.getenv("MAX_CONFIDENCE_THRESHOLD", 80)
+        if setup.confidence * 100 >= int(MAX_CONFIDENCE_THRESHOLD):
+            message = self._format_message(setup)
+            return self._send(message, key)
+
+        return False
 
     # ------------------------------------------------------------------
     # Internal helpers
