@@ -8,6 +8,7 @@ import PredictionsPage from './pages/PredictionsPage';
 import ForecastPage from './pages/ForecastPage';
 import TradeSetupPage from './pages/TradeSetupPage';
 import LiveSetupsPage from './pages/LiveSetupsPage';
+import AccuracyPage from './pages/AccuracyPage';
 
 export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -27,6 +28,7 @@ export default function App() {
             <Route path="/forecast" element={<ForecastPage />} />
             <Route path="/trade-setup" element={<TradeSetupPage />} />
             <Route path="/live-setups" element={<LiveSetupsPage />} />
+            <Route path="/accuracy" element={<AccuracyPage />} />
           </Routes>
         </main>
         {/* Fixed theme toggle at bottom-left of viewport */}
