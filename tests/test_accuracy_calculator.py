@@ -7,6 +7,8 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from unittest.mock import MagicMock, patch
+
 from kael_trading_bot.accuracy.calculator import (
     calculate_percentage_drift,
     check_directional_correctness,
@@ -14,7 +16,9 @@ from kael_trading_bot.accuracy.calculator import (
     evaluate_prediction,
     evaluate_predictions,
     get_current_status,
+    fetch_actual_price,
 )
+
 from kael_trading_bot.accuracy.models import (
     AccuracyResult,
     CorrectnessStatus,
@@ -148,6 +152,46 @@ class TestGetCurrentStatus:
 
     def test_invalid_timestamp(self):
         assert get_current_status("not-a-date") == "expired"
+
+
+# ---------------------------------------------------------------------------
+# fetch_actual_price
+# ---------------------------------------------------------------------------
+
+
+class TestFetchActualPrice:
+    @patch("kael_trading_bot.accuracy.calculator.ForexDataFetcher")
+    def test_returns_close_price_from_df(self, mock_fetcher_cls):
+        """When the fetcher returns a DataFrame with a matching row, return the Close price."""
+        import pandas as pd
+
+        idx = pd.date_range("2025-01-01", periods=3, freq="D")
+        df = pd.DataFrame({"Close": [1.10, 1.1050, 1.11]}, index=idx)
+
+        mock_instance = MagicMock()
+        mock_instance.get.return_value = df
+        mock_fetcher_cls.return_value = mock_instance
+
+        result = fetch_actual_price("EURUSD=X", "2025-01-02T00:00:00+00:00", timeframe="1d")
+        assert result == 1.1050
+
+    @patch("kael_trading_bot.accuracy.calculator.ForexDataFetcher")
+    def test_returns_none_when_df_empty(self, mock_fetcher_cls):
+        import pandas as pd
+
+        mock_instance = MagicMock()
+        mock_instance.get.return_value = pd.DataFrame()
+        mock_fetcher_cls.return_value = mock_instance
+
+        result = fetch_actual_price("EURUSD=X", "2025-01-02T00:00:00+00:00")
+        assert result is None
+
+    @patch("kael_trading_bot.accuracy.calculator.ForexDataFetcher")
+    def test_returns_none_on_exception(self, mock_fetcher_cls):
+        mock_fetcher_cls.side_effect = Exception("network error")
+
+        result = fetch_actual_price("EURUSD=X", "2025-01-02T00:00:00+00:00")
+        assert result is None
 
 
 # ---------------------------------------------------------------------------

@@ -68,6 +68,17 @@ def persist_prediction_from_setup(setup: TradeSetup) -> None:
         from kael_trading_bot.accuracy.models import PredictionRecord
         from kael_trading_bot.accuracy.persistence import PredictionStore
 
+        from datetime import datetime, timedelta, timezone
+
+        # Derive a reasonable horizon from the timeframe.
+        # For daily: next candle, for hourly: next hour, etc.
+        _tf_delta = {"1d": timedelta(days=1), "1h": timedelta(hours=1), "4h": timedelta(hours=4)}
+        gen_dt = datetime.fromisoformat(setup.generated_at)
+        if gen_dt.tzinfo is None:
+            gen_dt = gen_dt.replace(tzinfo=timezone.utc)
+        delta = _tf_delta.get(setup.timeframe, timedelta(days=1))
+        horizon_dt = gen_dt + delta
+
         record = PredictionRecord(
             id=uuid4().hex,
             pair=setup.pair,
@@ -75,7 +86,7 @@ def persist_prediction_from_setup(setup: TradeSetup) -> None:
             direction=setup.direction,
             predicted_price=setup.take_profit,
             predicted_at=setup.generated_at,
-            horizon_at="",  # caller can set this to a specific horizon
+            horizon_at=horizon_dt.isoformat(),
             model_name=setup.model_name,
             model_version=setup.model_version,
             generation_ts=setup.generated_at,

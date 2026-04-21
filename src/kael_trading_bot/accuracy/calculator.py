@@ -19,6 +19,80 @@ from kael_trading_bot.accuracy.models import (
 logger = logging.getLogger(__name__)
 
 
+def fetch_actual_price(
+    pair: str,
+    target_timestamp: str,
+    timeframe: str = "1d",
+) -> Optional[float]:
+    """Fetch the actual market price for *pair* at *target_timestamp*.
+
+    Uses the existing :class:`~kael_trading_bot.ingestion.ForexDataFetcher`
+    to retrieve OHLCV data, then returns the **Close** price for the
+    candle whose timestamp best matches *target_timestamp*.
+
+    Parameters
+    ----------
+    pair:
+        Forex pair ticker (e.g. ``"EURUSD=X"``).
+    target_timestamp:
+        ISO-8601 timestamp string to look up.
+    timeframe:
+        Candle interval — used to select the appropriate data source
+        (default ``"1d"``).
+
+    Returns
+    -------
+    float or None
+        The close price at the target timestamp, or ``None`` if no
+        matching candle is found.
+    """
+    try:
+        from datetime import datetime, timedelta, timezone
+
+        import pandas as pd
+
+        from kael_trading_bot.config import IngestionConfig
+        from kael_trading_bot.ingestion import ForexDataFetcher
+
+        target_dt = datetime.fromisoformat(target_timestamp)
+        if target_dt.tzinfo is None:
+            target_dt = target_dt.replace(tzinfo=timezone.utc)
+
+        # Use a generous date range around the target so we don't miss it.
+        start = (target_dt - timedelta(days=7)).strftime("%Y-%m-%d")
+        end = (target_dt + timedelta(days=2)).strftime("%Y-%m-%d")
+
+        cfg = IngestionConfig(
+            pairs=(pair,),
+            start_date=start,
+            end_date=end,
+            interval=timeframe,
+        )
+        fetcher = ForexDataFetcher(cfg)
+        df = fetcher.get(pair)
+
+        if df.empty:
+            return None
+
+        # Find the closest row to the target timestamp.
+        ts_utc = target_dt.tz_convert("UTC") if target_dt.tzinfo else target_dt
+        idx = df.index.get_indexer(
+            [pd.Timestamp(ts_utc)], method="nearest"
+        )[0]
+        if idx < 0:
+            return None
+
+        return float(df["Close"].iloc[idx])
+    except Exception as exc:
+        logger.warning(
+            "Failed to fetch actual price for %s @ %s: %s",
+            pair,
+            target_timestamp,
+            exc,
+        )
+        return None
+
+
 def calculate_percentage_drift(
     predicted_price: float, actual_price: float
 ) -> float:
