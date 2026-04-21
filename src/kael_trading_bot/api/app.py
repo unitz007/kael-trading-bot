@@ -40,6 +40,8 @@ from kael_trading_bot.training.persistence import ModelPersistence
 from kael_trading_bot.training.pipeline import PipelineConfig, TrainingPipeline
 from kael_trading_bot.trade_setup import generate_trade_setup
 import pandas as pd
+from kael_trading_bot.prediction_accuracy.service import get_accuracy_service
+from kael_trading_bot.prediction_accuracy.models import AccuracyStatus
 
 
 # Shared scanner instance — lazily created on first use.
@@ -938,5 +940,163 @@ def create_app() -> FastAPI:
             "timeframe": timeframe,
         }
 
+
+    # ------------------------------------------------------------------
+    # Prediction Accuracy endpoints
+    # ------------------------------------------------------------------
+
+    @app.get("/api/v1/accuracy/predictions", response_model=None)
+    def list_accuracy_predictions(
+        pair: str | None = None,
+        timeframe: str | None = None,
+        status: str | None = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> JSONResponse | dict[str, Any]:
+        """Return a paginated list of predictions with accuracy measurements.
+
+        Supports filtering by *pair*, *timeframe*, and *status*
+        (``correct``, ``incorrect``, ``pending``).
+        """
+        # Validate status if provided
+        if status is not None:
+            valid_statuses = {s.value for s in AccuracyStatus}
+            if status not in valid_statuses:
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "error": (
+                            f"Invalid status '{status}'. "
+                            f"Must be one of: {', '.join(sorted(valid_statuses))}"
+                        ),
+                    },
+                )
+
+        # Validate timeframe if provided
+        if timeframe is not None:
+            try:
+                _validate_timeframe(timeframe)
+            except ValueError as exc:
+                return JSONResponse(
+                    status_code=400,
+                    content={"error": str(exc)},
+                )
+
+        # Validate pagination
+        if page < 1:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "page must be >= 1"},
+            )
+        if page_size < 1 or page_size > 100:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "page_size must be between 1 and 100"},
+            )
+
+        try:
+            svc = get_accuracy_service()
+            result = svc.list_predictions(
+                pair=pair,
+                timeframe=timeframe,
+                status=status,
+                page=page,
+                page_size=page_size,
+            )
+            return result
+        except Exception as exc:
+            logger.exception("Failed to list accuracy predictions")
+            return JSONResponse(
+                status_code=500,
+                content={"error": f"Internal error listing predictions: {exc}"},
+            )
+
+    @app.get("/api/v1/accuracy/summary", response_model=None)
+    def get_accuracy_summary(
+        pair: str | None = None,
+        timeframe: str | None = None,
+    ) -> JSONResponse | dict[str, Any]:
+        """Return aggregated accuracy metrics broken down by pair and timeframe.
+
+        If neither *pair* nor *timeframe* is provided, returns the overall
+        summary across all pairs and timeframes.
+        """
+        # Validate timeframe if provided
+        if timeframe is not None:
+            try:
+                _validate_timeframe(timeframe)
+            except ValueError as exc:
+                return JSONResponse(
+                    status_code=400,
+                    content={"error": str(exc)},
+                )
+
+        try:
+            svc = get_accuracy_service()
+            summary = svc.get_summary(pair=pair, timeframe=timeframe)
+            return summary.to_dict()
+        except Exception as exc:
+            logger.exception("Failed to get accuracy summary")
+            return JSONResponse(
+                status_code=500,
+                content={"error": f"Internal error getting accuracy summary: {exc}"},
+            )
+
+    @app.get("/api/v1/accuracy/trend", response_model=None)
+    def get_accuracy_trend(
+        pair: str | None = None,
+        timeframe: str | None = None,
+        period: str = "week",
+    ) -> JSONResponse | dict[str, Any]:
+        """Return accuracy trend data over time for charting.
+
+        Parameters
+        ----------
+        pair:
+            Filter by forex pair. ``None`` for all pairs.
+        timeframe:
+            Filter by timeframe. ``None`` for all timeframes.
+        period:
+            Grouping granularity — ``"day"`` or ``"week"`` (default ``"week"``).
+        """
+        # Validate timeframe if provided
+        if timeframe is not None:
+            try:
+                _validate_timeframe(timeframe)
+            except ValueError as exc:
+                return JSONResponse(
+                    status_code=400,
+                    content={"error": str(exc)},
+                )
+
+        # Validate period
+        valid_periods = ("day", "week")
+        if period not in valid_periods:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "error": (
+                        f"Invalid period '{period}'. "
+                        f"Must be one of: {', '.join(valid_periods)}"
+                    ),
+                },
+            )
+
+        try:
+            svc = get_accuracy_service()
+            trend = svc.get_trend(pair=pair, timeframe=timeframe, period=period)
+            return {
+                "trend": [point.to_dict() for point in trend],
+                "count": len(trend),
+                "pair": pair,
+                "timeframe": timeframe,
+                "period": period,
+            }
+        except Exception as exc:
+            logger.exception("Failed to get accuracy trend")
+            return JSONResponse(
+                status_code=500,
+                content={"error": f"Internal error getting accuracy trend: {exc}"},
+            )
 
     return app
