@@ -630,7 +630,7 @@ export default function ChartPage() {
         tf || undefined,
         undefined,
         1,
-        200
+        100
       );
       setPredictions(data);
     } catch (err) {

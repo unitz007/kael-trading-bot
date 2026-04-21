@@ -82,6 +82,7 @@ def _fetch_live_price(ticker: str) -> float | None:
         cfg = IngestionConfig(pairs=(ticker,))
         fetcher = ForexDataFetcher(cfg)
         df = fetcher.get(ticker)
+        df.rename(columns={"Open": "open", "High": "high", "Low": "low", "Close": "close"}, inplace=True)
         if df is not None and not df.empty:
             last_close = float(df["close"].iloc[-1])
             last_date = str(df.index[-1])
