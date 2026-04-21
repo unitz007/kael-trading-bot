@@ -42,6 +42,7 @@ from kael_trading_bot.trade_setup import generate_trade_setup
 import pandas as pd
 from kael_trading_bot.prediction_accuracy.service import get_accuracy_service
 from kael_trading_bot.prediction_accuracy.models import AccuracyStatus
+from kael_trading_bot.api.websocket import router as ws_router
 
 
 # Shared scanner instance — lazily created on first use.
@@ -121,9 +122,13 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
+        allow_credentials=True,
         allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["Content-Type"],
     )
+
+    # Include the WebSocket router for live chart streaming.
+    app.include_router(ws_router)
 
     # ------------------------------------------------------------------
     # Endpoints
