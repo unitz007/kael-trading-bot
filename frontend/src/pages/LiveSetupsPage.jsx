@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getPairs, getTradeSetups } from '../api';
 import Spinner from '../components/Spinner';
 import ErrorMessage from '../components/ErrorMessage';
@@ -88,7 +89,7 @@ function EmptyState() {
   );
 }
 
-function SetupCard({ setup, stale }) {
+function SetupCard({ setup, stale, onClick }) {
   const directionBadge =
     setup.direction === 'buy'
       ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400'
@@ -96,10 +97,14 @@ function SetupCard({ setup, stale }) {
 
   return (
     <div
-      className={`rounded-xl border bg-white dark:bg-gray-800 p-5 shadow-sm transition-all ${
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
+      className={`rounded-xl border bg-white dark:bg-gray-800 p-5 shadow-sm transition-all cursor-pointer ${
         stale
-          ? 'border-gray-200 dark:border-gray-700 opacity-50'
-          : 'border-gray-200 dark:border-gray-700 hover:shadow-md dark:hover:shadow-gray-900/50'
+          ? 'border-gray-200 dark:border-gray-700 opacity-50 hover:opacity-70'
+          : 'border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-primary-300 dark:hover:shadow-gray-900/50 dark:hover:border-primary-700'
       }`}
     >
       <div className="flex items-start justify-between mb-4">
@@ -174,6 +179,7 @@ function SetupCard({ setup, stale }) {
 }
 
 export default function LiveSetupsPage() {
+  const navigate = useNavigate();
   const [setups, setSetups] = useState([]);
   const [pairs, setPairs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -540,6 +546,7 @@ export default function LiveSetupsPage() {
                   key={`${setup.pair}-${setup.timeframe}-${setup.generated_at}`}
                   setup={setup}
                   stale={isStale(setup.generated_at, staleThreshold)}
+                  onClick={() => navigate('/trade-setup', { state: { setup } })}
                 />
               ))}
             </div>
