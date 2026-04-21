@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import { getPairs, getTradeSetup } from '../api';
 import Spinner from '../components/Spinner';
 import ErrorMessage from '../components/ErrorMessage';
@@ -45,6 +45,8 @@ export default function TradeSetupPage() {
   const [setup, setSetup] = useState(null);
   const [error, setError] = useState(null);
   const [pairsLoading, setPairsLoading] = useState(true);
+  const location = useLocation();
+  const initialSetupRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,9 +54,18 @@ export default function TradeSetupPage() {
       try {
         const data = await getPairs();
         if (!cancelled) {
-          setPairs(data.pairs || []);
-          if (data.pairs?.length > 0) {
-            setSelectedPair(data.pairs[0]);
+          const availablePairs = data.pairs || [];
+          setPairs(availablePairs);
+
+          // If navigated from Live Setups with pre-populated setup data
+          if (location.state?.setup && !initialSetupRef.current) {
+            const incoming = location.state.setup;
+            initialSetupRef.current = incoming;
+            setSetup(incoming);
+            setSelectedPair(incoming.pair || '');
+            setSelectedTimeframe(incoming.timeframe || '1h');
+          } else if (availablePairs.length > 0 && !location.state?.setup) {
+            setSelectedPair(availablePairs[0]);
           }
         }
       } catch (err) {
@@ -65,7 +76,7 @@ export default function TradeSetupPage() {
     }
     fetchPairs();
     return () => { cancelled = true; };
-  }, []);
+  }, [location.state]);
 
   const fetchSetup = useCallback(async () => {
     if (!selectedPair) return;
