@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import TradingViewChart from '../components/TradingViewChart';
 import { getPairs, getHistory, getForecast } from '../api';
-import { useTheme } from '../components/ThemeProvider';
 
-const SUPPORTED_TIMEFRAMES = ['5m', '15m', '1h', '4h'];
+/**
+ * Timeframes that the backend forecast endpoint supports.
+ * The chart shows all 7 timeframe buttons (M1–D1) but forecast
+ * overlay is only fetched for these supported periods.
+ */
+const FORECAST_SUPPORTED_TFS = ['5m', '15m', '1h', '4h'];
 
 export default function ChartPage() {
-  const { theme } = useTheme();
   const [pairs, setPairs] = useState([]);
   const [selectedPair, setSelectedPair] = useState('');
   const [timeframe, setTimeframe] = useState('1h');
@@ -35,7 +38,8 @@ export default function ChartPage() {
     return () => {
       cancelled = true;
     };
-  }, [selectedPair]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Load history + forecast when pair or timeframe changes
   const loadChartData = useCallback(async (pair, tf) => {
@@ -53,11 +57,12 @@ export default function ChartPage() {
       }
 
       // Fetch forecast data (only for supported timeframes)
-      if (SUPPORTED_TIMEFRAMES.includes(tf)) {
+      if (FORECAST_SUPPORTED_TFS.includes(tf)) {
         try {
-          const forecast = await getForecast(pair, 30, tf);
-          if (forecast.forecast) {
-            setForecastData(forecast.forecast);
+          const forecastResp = await getForecast(pair, 30, tf);
+          const forecastArr = forecastResp.forecast || [];
+          if (forecastArr.length > 0) {
+            setForecastData(forecastArr);
           } else {
             setForecastData([]);
           }
@@ -124,7 +129,6 @@ export default function ChartPage() {
       <div className="flex-1 min-h-0">
         <TradingViewChart
           pair={selectedPair}
-          theme={theme}
           historyData={historyData}
           forecast={forecastData}
           loading={loading}

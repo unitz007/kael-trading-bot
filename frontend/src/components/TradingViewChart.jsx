@@ -3,13 +3,16 @@ import { createChart, CrosshairMode, ColorType } from 'lightweight-charts';
 import { useTheme } from './ThemeProvider';
 
 /**
- * Timeframe options supported by the API.
+ * Timeframe options matching acceptance criteria:
+ * M1, M5, M15, M30, H1, H4, D1
  */
 const TIMEFRAMES = [
-  { label: '5m', apiValue: '5m' },
-  { label: '15m', apiValue: '15m' },
-  { label: '1H', apiValue: '1h' },
-  { label: '4H', apiValue: '4h' },
+  { label: 'M1', apiValue: '1m' },
+  { label: 'M5', apiValue: '5m' },
+  { label: 'M15', apiValue: '15m' },
+  { label: 'M30', apiValue: '30m' },
+  { label: 'H1', apiValue: '1h' },
+  { label: 'H4', apiValue: '4h' },
   { label: 'D1', apiValue: '1d' },
 ];
 
@@ -40,6 +43,7 @@ export default function TradingViewChart({
 }) {
   const { theme } = useTheme();
   const chartContainerRef = useRef(null);
+  const chartAreaRef = useRef(null);
   const chartRef = useRef(null);
   const candleSeriesRef = useRef(null);
   const volumeSeriesRef = useRef(null);
@@ -117,11 +121,11 @@ export default function TradingViewChart({
 
   useEffect(() => {
     const container = chartContainerRef.current;
-    if (!container) return;
+    const chartArea = chartAreaRef.current;
+    if (!container || !chartArea) return;
 
-    const parentEl = container.parentElement;
-    const initialWidth = parentEl?.clientWidth || 800;
-    const initialHeight = parentEl?.clientHeight || 400;
+    const initialWidth = chartArea.clientWidth || 800;
+    const initialHeight = chartArea.clientHeight || 400;
 
     const chart = createChart(container, {
       width: initialWidth,
@@ -209,14 +213,16 @@ export default function TradingViewChart({
     candleSeriesRef.current = candleSeries;
     volumeSeriesRef.current = volumeSeries;
 
-    // Responsive resize
+    // Responsive resize — observe the chart-area wrapper
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
-        chart.applyOptions({ width, height });
+        if (width > 0 && height > 0) {
+          chart.applyOptions({ width, height });
+        }
       }
     });
-    resizeObserver.observe(parentEl);
+    resizeObserver.observe(chartArea);
 
     return () => {
       resizeObserver.disconnect();
@@ -404,7 +410,7 @@ export default function TradingViewChart({
       </div>
 
       {/* ---- Chart area ---- */}
-      <div className="relative flex-1 min-h-[350px]">
+      <div ref={chartAreaRef} className="relative flex-1 min-h-[350px]">
         <div
           ref={chartContainerRef}
           className="absolute inset-0 rounded-lg overflow-hidden border"
