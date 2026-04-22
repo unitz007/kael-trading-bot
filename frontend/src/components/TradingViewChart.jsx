@@ -164,7 +164,6 @@ export default function TradingViewChart({
       },
       handleScroll: true,
       handleScale: true,
-      wheelScale: { scaleFactor: 0.1 },
     });
 
     // Candlestick series (main price chart)
