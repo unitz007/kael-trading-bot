@@ -48,6 +48,7 @@ export default function TradingViewChart({
   const candleSeriesRef = useRef(null);
   const volumeSeriesRef = useRef(null);
   const [crosshairData, setCrosshairData] = useState(null);
+  const [chartVersion, setChartVersion] = useState(0);
 
   const isDark = theme === 'dark';
 
@@ -211,6 +212,7 @@ export default function TradingViewChart({
     chartRef.current = chart;
     candleSeriesRef.current = candleSeries;
     volumeSeriesRef.current = volumeSeries;
+    setChartVersion((v) => v + 1);
 
     // Responsive resize — observe the chart-area wrapper
     const resizeObserver = new ResizeObserver((entries) => {
@@ -250,7 +252,7 @@ export default function TradingViewChart({
         close: parseFloat(d.Close || d.close),
       })),
     );
-  }, [historyData]);
+  }, [historyData, chartVersion]);
 
   // Volume bars
   useEffect(() => {
@@ -266,7 +268,7 @@ export default function TradingViewChart({
         };
       }),
     );
-  }, [historyData, colors.volumeUp, colors.volumeDown]);
+  }, [historyData, colors.volumeUp, colors.volumeDown, chartVersion]);
 
   // Prediction overlay (dashed line)
   useEffect(() => {
@@ -287,7 +289,7 @@ export default function TradingViewChart({
     return () => {
       try { chartRef.current?.removeSeries(series); } catch { /* already removed */ }
     };
-  }, [buildPredictionOverlay, colors.predictionLine]);
+  }, [buildPredictionOverlay, colors.predictionLine, chartVersion]);
 
   // Forecast overlay (line + upper/lower bands)
   useEffect(() => {
@@ -332,7 +334,7 @@ export default function TradingViewChart({
         chartRef.current?.removeSeries(lLine);
       } catch { /* already removed */ }
     };
-  }, [buildForecastOverlay, colors.forecastLine, colors.forecastBand]);
+  }, [buildForecastOverlay, colors.forecastLine, colors.forecastBand, chartVersion]);
 
   // -------------------------------------------------------------------
   // Render
