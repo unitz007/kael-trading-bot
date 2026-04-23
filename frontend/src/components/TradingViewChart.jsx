@@ -52,6 +52,9 @@ export default function TradingViewChart({
 
   const isDark = theme === 'dark';
 
+// Add helper function for validating refs
+  const isValidRef = (ref) => ref && ref.current;
+
   // Theme-based colour palette — mimics TradingView dark & light
   const colors = isDark
     ? {
@@ -123,7 +126,10 @@ export default function TradingViewChart({
   useEffect(() => {
     const container = chartContainerRef.current;
     const chartArea = chartAreaRef.current;
-    if (!container || !chartArea) return;
+    if (!container || !chartArea) {
+      console.warn('Chart container or area not available');
+      return () => {}; // Return cleanup function
+    }
 
     const initialWidth = chartArea.clientWidth || 800;
     const initialHeight = chartArea.clientHeight || 400;
@@ -170,95 +176,140 @@ export default function TradingViewChart({
       });
     } catch (error) {
       console.error('Failed to create chart:', error);
-      return () => {};
+      return () => {}; // Return cleanup function
     }
 
     // Candlestick series (main price chart)
-    const candleSeries = chart.addCandlestickSeries({
-      upColor: colors.candleUp,
-      downColor: colors.candleDown,
-      borderDownColor: colors.candleDown,
-      borderUpColor: colors.candleUp,
-      wickDownColor: colors.candleDown,
-      wickUpColor: colors.candleUp,
-    });
+    let candleSeries;
+    try {
+      candleSeries = chart.addCandlestickSeries({
+        upColor: colors.candleUp,
+        downColor: colors.candleDown,
+        borderDownColor: colors.candleDown,
+        borderUpColor: colors.candleUp,
+        wickDownColor: colors.candleDown,
+        wickUpColor: colors.candleUp,
+      });
+    } catch (error) {
+      console.error('Failed to create candlestick series:', error);
+      try {
+        chart.remove();
+      } catch (removeError) {
+        console.error('Failed to remove chart:', removeError);
+      }
+      return () => {}; // Return cleanup function
+    }
 
     // Volume histogram (bottom 20 %)
-    const volumeSeries = chart.addHistogramSeries({
-      priceFormat: { type: 'volume' },
-      priceScaleId: 'volume',
-    });
-    chart.priceScale('volume').applyOptions({
-      scaleMargins: { top: 0.8, bottom: 0 },
-    });
+    let volumeSeries;
+    try {
+      volumeSeries = chart.addHistogramSeries({
+        priceFormat: { type: 'volume' },
+        priceScaleId: 'volume',
+      });
+      const volumeScale = chart.priceScale('volume');
+      if (volumeScale) {
+        volumeScale.applyOptions({
+          scaleMargins: { top: 0.8, bottom: 0 },
+        });
+      }
+    } catch (error) {
+      console.error('Failed to create volume series:', error);
+      // Continue without volume series rather than crashing
+      volumeSeries = null;
+    }
 
     // Crosshair tooltip
     const crosshairHandler = (param) => {
-      if (!param?.time || !param.seriesData) {
-        setCrosshairData(null);
-        return;
-      }
-      const cd = param.seriesData.get(candleSeries);
-      const vd = param.seriesData.get(volumeSeries);
-      if (cd) {
-        setCrosshairData({
-          time: param.time,
-          open: cd.open,
-          high: cd.high,
-          low: cd.low,
-          close: cd.close,
-          volume: vd ? vd.value : null,
-        });
-      } else {
+      try {
+        if (!param?.time || !param.seriesData) {
+          setCrosshairData(null);
+          return;
+        }
+        const cd = param.seriesData.get(candleSeries);
+        const vd = param.seriesData.get(volumeSeries);
+        if (cd) {
+          setCrosshairData({
+            time: param.time,
+            open: cd.open,
+            high: cd.high,
+            low: cd.low,
+            close: cd.close,
+            volume: vd ? vd.value : null,
+          });
+        } else {
+          setCrosshairData(null);
+        }
+      } catch (error) {
+        console.error('Error in crosshair handler:', error);
         setCrosshairData(null);
       }
     };
     
     if (chart) {
-      chart.subscribeCrosshairMove(crosshairHandler);
+      try {
+        chart.subscribeCrosshairMove(crosshairHandler);
+      } catch (error) {
+        console.error('Error subscribing to crosshair move:', error);
+      }
     }
 
     // Store refs for data-feeding effects
     chartRef.current = chart;
     candleSeriesRef.current = candleSeries;
-    volumeSeriesRef.current = volumeSeries;
+    // Only set volumeSeriesRef if successfully created
+    if (volumeSeries) {
+      volumeSeriesRef.current = volumeSeries;
+    }
     setChartVersion((v) => v + 1);
 
     // Responsive resize — observe the chart-area wrapper
-    const resizeObserver = new ResizeObserver((entries) => {
-      if (!chart) return;
-      for (const entry of entries) {
-        const { width, height } = entry.contentRect;
-        if (width > 0 && height > 0) {
-          try {
-            chart.applyOptions({ width, height });
-          } catch (e) {
-            // Ignore errors when resizing
+    let resizeObserver;
+    try {
+      resizeObserver = new ResizeObserver((entries) => {
+        if (!chart) return;
+        for (const entry of entries) {
+          const { width, height } = entry.contentRect;
+          if (width > 0 && height > 0) {
+            try {
+              chart.applyOptions({ width, height });
+            } catch (e) {
+              // Ignore errors when resizing
+            }
           }
         }
+      });
+      if (chartArea) {
+        resizeObserver.observe(chartArea);
       }
-    });
-    if (chartArea) {
-      resizeObserver.observe(chartArea);
+    } catch (error) {
+      console.error('Error setting up resize observer:', error);
+      resizeObserver = null;
     }
 
     let crosshairUnsubscribed = false;
     
     return () => {
-      resizeObserver.disconnect();
+      if (resizeObserver) {
+        try {
+          resizeObserver.disconnect();
+        } catch (e) {
+          console.warn('Error disconnecting resize observer:', e);
+        }
+      }
       if (chart && !crosshairUnsubscribed) {
         try {
           chart.unsubscribeCrosshairMove(crosshairHandler);
           crosshairUnsubscribed = true;
         } catch (e) {
-          // Ignore errors during unsubscribe
+          console.warn('Error unsubscribing from crosshair move:', e);
         }
       }
       if (chart) {
         try {
           chart.remove();
         } catch (e) {
-          // Ignore errors during removal
+          console.warn('Error removing chart:', e);
         }
       }
       chartRef.current = null;
