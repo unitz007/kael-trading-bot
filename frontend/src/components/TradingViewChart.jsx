@@ -347,18 +347,26 @@ export default function TradingViewChart({
     }
 
     let crosshairUnsubscribed = false;
+    let isMainCleanupComplete = false;
     
     return () => {
+      if (isMainCleanupComplete) return;
+      isMainCleanupComplete = true;
+      
       if (resizeObserver) {
         try {
-          resizeObserver.disconnect();
+          if (typeof resizeObserver.disconnect === 'function') {
+            resizeObserver.disconnect();
+          }
         } catch (e) {
           console.warn('Error disconnecting resize observer:', e);
         }
       }
       if (chart && !crosshairUnsubscribed) {
         try {
-          chart.unsubscribeCrosshairMove(crosshairHandler);
+          if (chart.unsubscribeCrosshairMove && typeof chart.unsubscribeCrosshairMove === 'function') {
+            chart.unsubscribeCrosshairMove(crosshairHandler);
+          }
           crosshairUnsubscribed = true;
         } catch (e) {
           console.warn('Error unsubscribing from crosshair move:', e);
@@ -366,7 +374,9 @@ export default function TradingViewChart({
       }
       if (chart) {
         try {
-          chart.remove();
+          if (chart.remove && typeof chart.remove === 'function') {
+            chart.remove();
+          }
         } catch (e) {
           console.warn('Error removing chart:', e);
         }
@@ -438,12 +448,18 @@ export default function TradingViewChart({
       });
       series.setData(data);
 
+      let isPredictionCleanupComplete = false;
       return () => {
+        if (isPredictionCleanupComplete) return;
+        isPredictionCleanupComplete = true;
+        
         try { 
-          if (chartRef.current && series) {
+          if (chartRef.current && chartRef.current.removeSeries && typeof chartRef.current.removeSeries === 'function' && series) {
             chartRef.current.removeSeries(series);
           }
-        } catch { /* already removed */ }
+        } catch (error) {
+          console.warn('Error cleaning up prediction series:', error);
+        }
       };
     } catch (error) {
       console.error('Error creating prediction overlay:', error);
@@ -488,14 +504,20 @@ export default function TradingViewChart({
       });
       lLine.setData(lower);
 
+      let isForecastCleanupComplete = false;
       return () => {
+        if (isForecastCleanupComplete) return;
+        isForecastCleanupComplete = true;
+        
         try {
-          if (chartRef.current) {
+          if (chartRef.current && typeof chartRef.current.removeSeries === 'function') {
             if (fLine) chartRef.current.removeSeries(fLine);
             if (uLine) chartRef.current.removeSeries(uLine);
             if (lLine) chartRef.current.removeSeries(lLine);
           }
-        } catch { /* already removed */ }
+        } catch (error) {
+          console.warn('Error cleaning up forecast series:', error);
+        }
       };
     } catch (error) {
       console.error('Error creating forecast overlay:', error);
@@ -559,7 +581,7 @@ export default function TradingViewChart({
               L: <span className="text-gray-700 dark:text-gray-300">{crosshairData.low?.toFixed(5)}</span>
             </span>
             <span>
-              C:{' '}
+              C: 
               <span
                 className={`font-semibold ${
                   crosshairData.close >= (crosshairData.open ?? 0) ? 'text-green-500' : 'text-red-500'
@@ -585,7 +607,7 @@ export default function TradingViewChart({
           style={{ borderColor: colors.borderColor }}
         />
 
-        {/* Loading overlay — scoped to chart area */}
+        {/* Loading overlay — scoped to chart area -->
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/60 dark:bg-gray-900/60 rounded-lg z-10">
             <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
