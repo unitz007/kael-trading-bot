@@ -607,7 +607,7 @@ export default function TradingViewChart({
           style={{ borderColor: colors.borderColor }}
         />
 
-        {/* Loading overlay — scoped to chart area -->
+        {/* Loading overlay — scoped to chart area */}
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/60 dark:bg-gray-900/60 rounded-lg z-10">
             <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
