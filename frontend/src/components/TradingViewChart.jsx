@@ -128,44 +128,50 @@ export default function TradingViewChart({
     const initialWidth = chartArea.clientWidth || 800;
     const initialHeight = chartArea.clientHeight || 400;
 
-    const chart = createChart(container, {
-      width: initialWidth,
-      height: initialHeight,
-      layout: {
-        background: { type: ColorType.Solid, color: colors.background },
-        textColor: colors.textColor,
-      },
-      grid: {
-        vertLines: { color: colors.gridColor },
-        horzLines: { color: colors.gridColor },
-      },
-      crosshair: {
-        mode: CrosshairMode.Normal,
-        vertLine: {
-          color: colors.crosshairColor,
-          width: 1,
-          style: 2,
-          labelBackgroundColor: colors.borderColor,
+    let chart;
+    try {
+      chart = createChart(container, {
+        width: initialWidth,
+        height: initialHeight,
+        layout: {
+          background: { type: ColorType.Solid, color: colors.background },
+          textColor: colors.textColor,
         },
-        horzLine: {
-          color: colors.crosshairColor,
-          width: 1,
-          style: 2,
-          labelBackgroundColor: colors.borderColor,
+        grid: {
+          vertLines: { color: colors.gridColor },
+          horzLines: { color: colors.gridColor },
         },
-      },
-      rightPriceScale: {
-        borderColor: colors.borderColor,
-        scaleMargins: { top: 0.1, bottom: 0.25 },
-      },
-      timeScale: {
-        borderColor: colors.borderColor,
-        timeVisible: true,
-        secondsVisible: false,
-      },
-      handleScroll: true,
-      handleScale: true,
-    });
+        crosshair: {
+          mode: CrosshairMode.Normal,
+          vertLine: {
+            color: colors.crosshairColor,
+            width: 1,
+            style: 2,
+            labelBackgroundColor: colors.borderColor,
+          },
+          horzLine: {
+            color: colors.crosshairColor,
+            width: 1,
+            style: 2,
+            labelBackgroundColor: colors.borderColor,
+          },
+        },
+        rightPriceScale: {
+          borderColor: colors.borderColor,
+          scaleMargins: { top: 0.1, bottom: 0.25 },
+        },
+        timeScale: {
+          borderColor: colors.borderColor,
+          timeVisible: true,
+          secondsVisible: false,
+        },
+        handleScroll: true,
+        handleScale: true,
+      });
+    } catch (error) {
+      console.error('Failed to create chart:', error);
+      return () => {};
+    }
 
     // Candlestick series (main price chart)
     const candleSeries = chart.addCandlestickSeries({
@@ -187,7 +193,7 @@ export default function TradingViewChart({
     });
 
     // Crosshair tooltip
-    chart.subscribeCrosshairMove((param) => {
+    const crosshairHandler = (param) => {
       if (!param?.time || !param.seriesData) {
         setCrosshairData(null);
         return;
@@ -206,7 +212,11 @@ export default function TradingViewChart({
       } else {
         setCrosshairData(null);
       }
-    });
+    };
+    
+    if (chart) {
+      chart.subscribeCrosshairMove(crosshairHandler);
+    }
 
     // Store refs for data-feeding effects
     chartRef.current = chart;
@@ -216,18 +226,41 @@ export default function TradingViewChart({
 
     // Responsive resize — observe the chart-area wrapper
     const resizeObserver = new ResizeObserver((entries) => {
+      if (!chart) return;
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
         if (width > 0 && height > 0) {
-          chart.applyOptions({ width, height });
+          try {
+            chart.applyOptions({ width, height });
+          } catch (e) {
+            // Ignore errors when resizing
+          }
         }
       }
     });
-    resizeObserver.observe(chartArea);
+    if (chartArea) {
+      resizeObserver.observe(chartArea);
+    }
 
+    let crosshairUnsubscribed = false;
+    
     return () => {
       resizeObserver.disconnect();
-      chart.remove();
+      if (chart && !crosshairUnsubscribed) {
+        try {
+          chart.unsubscribeCrosshairMove(crosshairHandler);
+          crosshairUnsubscribed = true;
+        } catch (e) {
+          // Ignore errors during unsubscribe
+        }
+      }
+      if (chart) {
+        try {
+          chart.remove();
+        } catch (e) {
+          // Ignore errors during removal
+        }
+      }
       chartRef.current = null;
       candleSeriesRef.current = null;
       volumeSeriesRef.current = null;
@@ -287,7 +320,11 @@ export default function TradingViewChart({
     series.setData(data);
 
     return () => {
-      try { chartRef.current?.removeSeries(series); } catch { /* already removed */ }
+      try { 
+        if (chartRef.current && series) {
+          chartRef.current.removeSeries(series);
+        }
+      } catch { /* already removed */ }
     };
   }, [buildPredictionOverlay, colors.predictionLine, chartVersion]);
 
@@ -329,9 +366,11 @@ export default function TradingViewChart({
 
     return () => {
       try {
-        chartRef.current?.removeSeries(fLine);
-        chartRef.current?.removeSeries(uLine);
-        chartRef.current?.removeSeries(lLine);
+        if (chartRef.current) {
+          if (fLine) chartRef.current.removeSeries(fLine);
+          if (uLine) chartRef.current.removeSeries(uLine);
+          if (lLine) chartRef.current.removeSeries(lLine);
+        }
       } catch { /* already removed */ }
     };
   }, [buildForecastOverlay, colors.forecastLine, colors.forecastBand, chartVersion]);
