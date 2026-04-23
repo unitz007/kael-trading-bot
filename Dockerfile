@@ -22,13 +22,13 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 # Install Python dependencies (layer-cached unless requirements.txt changes)
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+RUN python -m pip install --no-cache-dir --upgrade pip && \
+    python -m pip install --no-cache-dir -r requirements.txt
 
 # Install the application package itself
 COPY pyproject.toml .
 COPY src/ src/
-RUN pip install --no-cache-dir --no-deps -e .
+RUN python -m pip install --no-cache-dir --no-deps -e .
 
 # --- Production stage ---
 FROM python:3.11-slim AS production
