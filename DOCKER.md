@@ -128,3 +128,39 @@ When the backend is running, FastAPI's interactive docs are available at:
   KAEL_PORT=8080
   FRONTEND_PORT=8081
   ```
+
+## Development Without Docker
+
+For local development, you can run the application outside of Docker:
+
+1. Install Python 3.11 or higher
+2. Create and activate a virtual environment:
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   ```
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+   
+   If `pip` is not found, try using:
+   ```bash
+   python -m pip install -r requirements.txt
+   ```
+4. Install the package in development mode:
+   ```bash
+   pip install -e ".[dev]"
+   ```
+   
+   Or if `pip` is not found:
+   ```bash
+   python -m pip install -e ".[dev]"
+   ```
+5. Configure your environment variables (optionally using a `.env` file)
+6. Start the development server:
+   ```bash
+   python main.py serve
+   ```
+
+This approach allows you to develop without Docker while still maintaining compatibility with the containerized production environment.
