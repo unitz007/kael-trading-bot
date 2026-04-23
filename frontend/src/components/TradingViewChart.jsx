@@ -51,6 +51,23 @@ export default function TradingViewChart({
   const [chartVersion, setChartVersion] = useState(0);
 
   const isDark = theme === 'dark';
+  
+  // Early exit if essential props are missing
+  if (!pair) {
+    return (
+      <div className="flex flex-col h-full min-h-[400px]">
+        {/* ---- Toolbar ---- */}
+        <div className="flex flex-wrap items-center gap-2 mb-2 px-1">
+          <span className="text-sm font-semibold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded">
+            Select a pair
+          </span>
+        </div>
+        <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+          <p className="text-gray-500 dark:text-gray-400">Please select a trading pair to view the chart</p>
+        </div>
+      </div>
+    );
+  }
 
 // Add helper function for validating refs
   const isValidRef = (ref) => ref && ref.current;
@@ -126,13 +143,38 @@ export default function TradingViewChart({
   useEffect(() => {
     const container = chartContainerRef.current;
     const chartArea = chartAreaRef.current;
-    if (!container || !chartArea) {
-      console.warn('Chart container or area not available');
+    
+    // Validate that we have valid DOM elements
+    if (!container || !(container instanceof HTMLElement)) {
+      console.warn('Invalid chart container element');
+      return () => {}; // Return cleanup function
+    }
+    
+    if (!chartArea || !(chartArea instanceof HTMLElement)) {
+      console.warn('Invalid chart area element');
+      return () => {}; // Return cleanup function
+    }
+    
+    // Ensure container is attached to DOM
+    if (!document.contains(container)) {
+      console.warn('Chart container not attached to DOM');
       return () => {}; // Return cleanup function
     }
 
-    const initialWidth = chartArea.clientWidth || 800;
-    const initialHeight = chartArea.clientHeight || 400;
+    const initialWidth = Math.max(chartArea.clientWidth || 0, 100);
+    const initialHeight = Math.max(chartArea.clientHeight || 0, 100);
+    
+    // Validate dimensions
+    if (initialWidth <= 0 || initialHeight <= 0) {
+      console.warn('Invalid chart dimensions:', { width: initialWidth, height: initialHeight });
+      return () => {}; // Return cleanup function
+    }
+
+    // Validate that createChart function is available
+    if (typeof createChart !== 'function') {
+      console.error('TradingView lightweight-charts library not loaded properly');
+      return () => {}; // Return cleanup function
+    }
 
     let chart;
     try {
@@ -179,6 +221,17 @@ export default function TradingViewChart({
       return () => {}; // Return cleanup function
     }
 
+    // Validate chart object before creating series
+    if (!chart || typeof chart.addCandlestickSeries !== 'function') {
+      console.error('Invalid chart object or missing addCandlestickSeries method');
+      try {
+        chart?.remove();
+      } catch (removeError) {
+        console.error('Failed to remove chart:', removeError);
+      }
+      return () => {}; // Return cleanup function
+    }
+
     // Candlestick series (main price chart)
     let candleSeries;
     try {
@@ -200,23 +253,29 @@ export default function TradingViewChart({
       return () => {}; // Return cleanup function
     }
 
-    // Volume histogram (bottom 20 %)
+    // Validate histogram series support
     let volumeSeries;
-    try {
-      volumeSeries = chart.addHistogramSeries({
-        priceFormat: { type: 'volume' },
-        priceScaleId: 'volume',
-      });
-      const volumeScale = chart.priceScale('volume');
-      if (volumeScale) {
-        volumeScale.applyOptions({
-          scaleMargins: { top: 0.8, bottom: 0 },
-        });
-      }
-    } catch (error) {
-      console.error('Failed to create volume series:', error);
-      // Continue without volume series rather than crashing
+    if (typeof chart.addHistogramSeries !== 'function') {
+      console.warn('addHistogramSeries not available, skipping volume series');
       volumeSeries = null;
+    } else {
+      // Volume histogram (bottom 20 %)
+      try {
+        volumeSeries = chart.addHistogramSeries({
+          priceFormat: { type: 'volume' },
+          priceScaleId: 'volume',
+        });
+        const volumeScale = chart.priceScale('volume');
+        if (volumeScale) {
+          volumeScale.applyOptions({
+            scaleMargins: { top: 0.8, bottom: 0 },
+          });
+        }
+      } catch (error) {
+        console.error('Failed to create volume series:', error);
+        // Continue without volume series rather than crashing
+        volumeSeries = null;
+      }
     }
 
     // Crosshair tooltip
@@ -327,31 +386,39 @@ export default function TradingViewChart({
   // Candlestick OHLC
   useEffect(() => {
     if (!candleSeriesRef.current || !historyData?.length) return;
-    candleSeriesRef.current.setData(
-      historyData.map((d) => ({
-        time: String(d.Date || d.date),
-        open: parseFloat(d.Open || d.open),
-        high: parseFloat(d.High || d.high),
-        low: parseFloat(d.Low || d.low),
-        close: parseFloat(d.Close || d.close),
-      })),
-    );
+    try {
+      candleSeriesRef.current.setData(
+        historyData.map((d) => ({
+          time: String(d.Date || d.date),
+          open: parseFloat(d.Open || d.open),
+          high: parseFloat(d.High || d.high),
+          low: parseFloat(d.Low || d.low),
+          close: parseFloat(d.Close || d.close),
+        })),
+      );
+    } catch (error) {
+      console.error('Error setting candlestick data:', error);
+    }
   }, [historyData, chartVersion]);
 
   // Volume bars
   useEffect(() => {
     if (!volumeSeriesRef.current || !historyData?.length) return;
-    volumeSeriesRef.current.setData(
-      historyData.map((d) => {
-        const close = parseFloat(d.Close || d.close);
-        const open = parseFloat(d.Open || d.open);
-        return {
-          time: String(d.Date || d.date),
-          value: parseFloat(d.Volume || d.volume || 0),
-          color: close >= open ? colors.volumeUp : colors.volumeDown,
-        };
-      }),
-    );
+    try {
+      volumeSeriesRef.current.setData(
+        historyData.map((d) => {
+          const close = parseFloat(d.Close || d.close);
+          const open = parseFloat(d.Open || d.open);
+          return {
+            time: String(d.Date || d.date),
+            value: parseFloat(d.Volume || d.volume || 0),
+            color: close >= open ? colors.volumeUp : colors.volumeDown,
+          };
+        }),
+      );
+    } catch (error) {
+      console.error('Error setting volume data:', error);
+    }
   }, [historyData, colors.volumeUp, colors.volumeDown, chartVersion]);
 
   // Prediction overlay (dashed line)
@@ -360,23 +427,28 @@ export default function TradingViewChart({
     const data = buildPredictionOverlay();
     if (!data.length) return;
 
-    const series = chartRef.current.addLineSeries({
-      color: colors.predictionLine,
-      lineWidth: 1,
-      lineStyle: 2,
-      priceScaleId: 'right',
-      lastValueVisible: false,
-      priceLineVisible: false,
-    });
-    series.setData(data);
+    try {
+      const series = chartRef.current.addLineSeries({
+        color: colors.predictionLine,
+        lineWidth: 1,
+        lineStyle: 2,
+        priceScaleId: 'right',
+        lastValueVisible: false,
+        priceLineVisible: false,
+      });
+      series.setData(data);
 
-    return () => {
-      try { 
-        if (chartRef.current && series) {
-          chartRef.current.removeSeries(series);
-        }
-      } catch { /* already removed */ }
-    };
+      return () => {
+        try { 
+          if (chartRef.current && series) {
+            chartRef.current.removeSeries(series);
+          }
+        } catch { /* already removed */ }
+      };
+    } catch (error) {
+      console.error('Error creating prediction overlay:', error);
+      return () => {};
+    }
   }, [buildPredictionOverlay, colors.predictionLine, chartVersion]);
 
   // Forecast overlay (line + upper/lower bands)
@@ -385,45 +457,50 @@ export default function TradingViewChart({
     const { line, upper, lower } = buildForecastOverlay();
     if (!line.length) return;
 
-    const fLine = chartRef.current.addLineSeries({
-      color: colors.forecastLine,
-      lineWidth: 2,
-      priceScaleId: 'right',
-      lastValueVisible: true,
-      priceLineVisible: true,
-      title: 'Forecast',
-    });
-    fLine.setData(line);
+    try {
+      const fLine = chartRef.current.addLineSeries({
+        color: colors.forecastLine,
+        lineWidth: 2,
+        priceScaleId: 'right',
+        lastValueVisible: true,
+        priceLineVisible: true,
+        title: 'Forecast',
+      });
+      fLine.setData(line);
 
-    const uLine = chartRef.current.addLineSeries({
-      color: colors.forecastBand,
-      lineWidth: 1,
-      lineStyle: 1,
-      priceScaleId: 'right',
-      lastValueVisible: false,
-      priceLineVisible: false,
-    });
-    uLine.setData(upper);
+      const uLine = chartRef.current.addLineSeries({
+        color: colors.forecastBand,
+        lineWidth: 1,
+        lineStyle: 1,
+        priceScaleId: 'right',
+        lastValueVisible: false,
+        priceLineVisible: false,
+      });
+      uLine.setData(upper);
 
-    const lLine = chartRef.current.addLineSeries({
-      color: colors.forecastBand,
-      lineWidth: 1,
-      lineStyle: 1,
-      priceScaleId: 'right',
-      lastValueVisible: false,
-      priceLineVisible: false,
-    });
-    lLine.setData(lower);
+      const lLine = chartRef.current.addLineSeries({
+        color: colors.forecastBand,
+        lineWidth: 1,
+        lineStyle: 1,
+        priceScaleId: 'right',
+        lastValueVisible: false,
+        priceLineVisible: false,
+      });
+      lLine.setData(lower);
 
-    return () => {
-      try {
-        if (chartRef.current) {
-          if (fLine) chartRef.current.removeSeries(fLine);
-          if (uLine) chartRef.current.removeSeries(uLine);
-          if (lLine) chartRef.current.removeSeries(lLine);
-        }
-      } catch { /* already removed */ }
-    };
+      return () => {
+        try {
+          if (chartRef.current) {
+            if (fLine) chartRef.current.removeSeries(fLine);
+            if (uLine) chartRef.current.removeSeries(uLine);
+            if (lLine) chartRef.current.removeSeries(lLine);
+          }
+        } catch { /* already removed */ }
+      };
+    } catch (error) {
+      console.error('Error creating forecast overlay:', error);
+      return () => {};
+    }
   }, [buildForecastOverlay, colors.forecastLine, colors.forecastBand, chartVersion]);
 
   // -------------------------------------------------------------------
