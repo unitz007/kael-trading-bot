@@ -25,7 +25,9 @@ ML-based forex trading bot with technical feature engineering, model training pi
 
 Kael Trading Bot ingests forex pair data via Yahoo Finance, engineers technical features (SMA, EMA, RSI, MACD, Bollinger Bands, ATR, rolling stats, temporal features, and directional targets), trains ML classification models (XGBoost, LightGBM, Random Forest, Logistic Regression), evaluates them with both classification and trading-oriented metrics, and persists trained models for downstream use.
 
-In addition to the Python API and CLI, the project provides a **REST API** (built with FastAPI) that exposes bot capabilities as HTTP endpoints and a **Web UI** that lets you browse forex pairs, train models, and view predictions from the browser.
+In addition to the Python API and CLI, the project provides a **REST API** (built with FastAPI) that exposes bot capabilities as HTTP endpoints, a **Web UI** that lets you browse forex pairs, train models, and view predictions from the browser, **Telegram integration** for real-time alerts, and **WebSocket connections** for live data streaming.
+
+New features include **prediction accuracy tracking** that evaluates past forecasts against actual outcomes, **automated trade setup generation**, and **background scanners** that continuously process market data.
 
 ---
 
@@ -82,6 +84,8 @@ In addition to the Python API and CLI, the project provides a **REST API** (buil
    - `python-dotenv` — environment variable loading
    - `fastapi` — REST API framework
    - `uvicorn` — ASGI server for running the FastAPI application
+   - `websockets` — WebSocket support for live data streaming
+   - `requests` — Telegram bot integration
 
 4. **(Optional) Install the package in editable mode for development:**
 
@@ -103,6 +107,10 @@ The project is configured through **Python dataclasses** and **environment varia
 | `KAEL_END_DATE`     | Data end date (ISO 8601, inclusive)      | `2025-01-01`           |
 | `KAEL_INTERVAL`     | Data frequency (`1d`, `1h`, etc.)        | `1d`                   |
 | `KAEL_CACHE_DIR`    | Directory for cached Parquet data files   | `.cache/forex_data`    |
+| `TELEGRAM_ENABLED` | Enable Telegram notifications (1/0)       | `0`                    |
+| `TELEGRAM_BOT_TOKEN` | Telegram Bot API token                   | `""`                   |
+| `TELEGRAM_CHAT_ID`  | Telegram chat ID for notifications        | `""`                   |
+| `MAX_CONFIDENCE_THRESHOLD` | Min confidence for Telegram alerts   | `80`                   |
 
 These are read by `IngestionConfig` (in `src/kael_trading_bot/config.py`). Set them in your shell or a `.env` file loaded with `python-dotenv`.
 
@@ -110,16 +118,17 @@ These are read by `IngestionConfig` (in `src/kael_trading_bot/config.py`). Set t
 
 | Class             | Module / File                                              | Purpose                                        |
 | ----------------- | ---------------------------------------------------------- | ---------------------------------------------- |
-| `IngestionConfig` | `kael_trading_bot.config` (or `src.kael_trading_bot.config`) | Forex pairs, date ranges, interval, cache dir  |
+| `IngestionConfig` | `kael_trading_bot.config` (or `src/kael_trading_bot.config`) | Forex pairs, date ranges, interval, cache dir  |
 | `FeatureConfig`   | `kael_trading_bot.features.pipeline`                        | Indicator windows, target horizons, NaN policy |
-| `PipelineConfig`  | `src.kael_trading_bot.training.pipeline`                    | Model type, split ratios, CV, persistence      |
+| `PipelineConfig`  | `kael_trading_bot.training.pipeline`                    | Model type, split ratios, CV, persistence      |
+| `ScannerConfig`   | `kael_trading_bot.config`                                  | Background scanner configuration               |
 
 Example — override defaults programmatically:
 
 ```python
 from kael_trading_bot.config import IngestionConfig
 from kael_trading_bot.features.pipeline import FeatureConfig
-from src.kael_trading_bot.training.pipeline import PipelineConfig
+from kael_trading_bot.training.pipeline import PipelineConfig
 
 ingestion_cfg = IngestionConfig(
     pairs=("EURUSD=X", "GBPUSD=X"),
@@ -152,7 +161,7 @@ import numpy as np
 from kael_trading_bot.config import IngestionConfig
 from kael_trading_bot.ingestion import ForexDataFetcher
 from kael_trading_bot.features.pipeline import build_feature_matrix, FeatureConfig
-from src.kael_trading_bot.training.pipeline import PipelineConfig, TrainingPipeline
+from kael_trading_bot.training.pipeline import PipelineConfig, TrainingPipeline
 
 # 1. Fetch data
 ingestion_cfg = IngestionConfig(pairs=("EURUSD=X",))
@@ -220,7 +229,7 @@ The model version defaults to a timestamp string like `v20240115T103000`. Use `M
 Load a previously trained model and its metadata using `ModelPersistence`:
 
 ```python
-from src.kael_trading_bot.training.persistence import ModelPersistence
+from kael_trading_bot.training.persistence import ModelPersistence
 
 persistence = ModelPersistence(directory="models")
 model, metadata = persistence.load(
@@ -270,6 +279,12 @@ uvicorn kael_trading_bot.api:create_app --factory --host 0.0.0.0 --port 5000
 | `GET` | `/api/v1/pairs/<pair>/forecast` | Get future price forecast with confidence bands for a pair |
 | `GET` | `/api/v1/pairs/<pair>/trade-setup` | Generate an actionable trade setup (entry, stop-loss, take-profit) for a pair |
 | `GET` | `/api/v1/models` | List all trained models with their metadata and metrics |
+| `GET` | `/api/v1/trade-setups` | Get trade setups for all pairs |
+| `GET` | `/api/v1/setups` | Get historical trade setups from the scanner |
+| `GET` | `/api/v1/accuracy/predictions` | Get prediction accuracy records |
+| `GET` | `/api/v1/accuracy/summary` | Get aggregated accuracy metrics |
+| `GET` | `/api/v1/accuracy/trend` | Get accuracy trend data over time |
+| `GET` | `/ws/chart` | WebSocket endpoint for live price streaming |
 
 **Pairs** — `GET /api/v1/pairs`
 
@@ -299,6 +314,30 @@ Returns a future price forecast for a pair using the latest trained model. Inclu
 
 Generates an actionable trade setup for a pair including entry price, stop loss, take profit, model confidence, and trade direction (buy/sell/hold). Requires a trained model for the pair.
 
+**All Trade Setups** — `GET /api/v1/trade-setups`
+
+Returns trade setups for all supported pairs with filtering by timeframe. Shows entry price, stop loss, take profit, confidence, and other trade parameters.
+
+**Scanned Setups** — `GET /api/v1/setups`
+
+Returns historical trade setups that have been scanned and stored by the background scanner.
+
+**Prediction Accuracy Records** — `GET /api/v1/accuracy/predictions`
+
+Returns historical prediction accuracy records with filtering by pair, timeframe, and evaluation status (correct/incorrect/pending).
+
+**Accuracy Summary** — `GET /api/v1/accuracy/summary`
+
+Returns aggregated accuracy metrics across all predictions, optionally filtered by pair or timeframe.
+
+**Accuracy Trends** — `GET /api/v1/accuracy/trend`
+
+Returns accuracy trend data over time for charting, optionally grouped by day or week.
+
+**WebSocket Streaming** — `GET /ws/chart`
+
+WebSocket endpoint for live price and forecast streaming. Clients can subscribe to a specific pair and timeframe to receive real-time updates.
+
 ### Web UI
 
 The project includes a browser-based Web UI served by the FastAPI application. It provides server-rendered HTML pages with vanilla JavaScript for interactivity.
@@ -324,6 +363,14 @@ Allows you to trigger model training from the browser. Select a forex pair, star
 **Predictions** (`/predictions`)
 
 Displays ML prediction results for a selected forex pair. Shows the predicted direction (UP or DOWN), confidence score, the model version used, when the model was trained, and the timestamp the prediction was generated. A model status summary indicates which pairs have a trained model available.
+
+**Trade Setups** (`/setups`)
+
+Shows the latest generated trade setups across all currency pairs, with filtering options. Each setup includes entry price, stop loss, take profit, and confidence level.
+
+**Accuracy Dashboard** (`/accuracy`)
+
+Visualizes prediction accuracy statistics with charts and metrics. Shows historical accuracy rates, trending performance, and detailed breakdown by pair and timeframe.
 
 ---
 
@@ -363,34 +410,47 @@ docker compose up --build
 ```
 src/kael_trading_bot/
 ├── __init__.py
-├── config.py           # IngestionConfig (forex pairs, dates, caching)
-├── ingestion.py        # ForexDataFetcher (Yahoo Finance OHLCV)
-├── features/           # Technical feature engineering
+├── config.py              # IngestionConfig (forex pairs, dates, caching)
+├── ingestion.py           # ForexDataFetcher (Yahoo Finance OHLCV)
+├── features/              # Technical feature engineering
 │   ├── __init__.py
-│   ├── pipeline.py     # build_feature_matrix, FeatureConfig
-│   ├── indicators.py   # SMA, EMA, RSI, MACD, BB, ATR
-│   ├── temporal.py     # Time-based features, rolling stats
-│   └── targets.py      # Future returns, directional targets
-├── training/           # ML model training pipeline
+│   ├── pipeline.py        # build_feature_matrix, FeatureConfig
+│   ├── indicators.py       # SMA, EMA, RSI, MACD, BB, ATR
+│   ├── temporal.py        # Time-based features, rolling stats
+│   └── targets.py         # Future returns, directional targets
+├── training/              # ML model training pipeline
 │   ├── __init__.py
-│   ├── pipeline.py     # TrainingPipeline, PipelineConfig
-│   ├── models.py       # ModelRegistry, ModelType (XGBoost, LightGBM, RF, LR)
-│   ├── splitting.py    # TimeSeriesSplitter (chronological split)
-│   ├── evaluation.py   # Classification + trading metrics
-│   ├── persistence.py  # ModelPersistence (save/load with metadata)
-│   └── logging.py      # TrainingLogger (JSON-lines run history)
-├── trade_setup/        # Trade setup generation & backtesting
+│   ├── pipeline.py        # TrainingPipeline, PipelineConfig
+│   ├── models.py          # ModelRegistry, ModelType (XGBoost, LightGBM, RF, LR)
+│   ├── splitting.py       # TimeSeriesSplitter (chronological split)
+│   ├── evaluation.py       # Classification + trading metrics
+│   ├── persistence.py     # ModelPersistence (save/load with metadata)
+│   └── logging.py         # TrainingLogger (JSON-lines run history)
+├── trade_setup/           # Trade setup generation and backtesting
 │   ├── __init__.py
-│   └── backtest.py    # Backtesting utilities
-└── api/                # REST API layer (FastAPI)
-    ├── __init__.py     # create_app export
-    └── app.py          # FastAPI app with /api/v1/ endpoints (pairs, history, train, predict, forecast, trade-setup, models)
+│   ├── backtest.py        # Backtesting utilities
+│   └── trade_setup.py     # TradeSetup generation and prediction persistence
+├── scanner/              # Background scanner scheduler and persistence
+│   ├── __init__.py
+│   ├── scheduler.py       # TradeSetupScanner daemon
+│   └── persistence.py     # SetupStore for scanned setups
+├── prediction_accuracy/   # Prediction accuracy tracking and persistence
+│   ├── __init__.py
+│   ├── models.py          # PredictionRecord, AccuracyStatus, AccuracySummary
+│   └── service.py         # PredictionAccuracyService abstraction
+├── telegram/              # Telegram notification integration
+│   ├── __init__.py
+│   └── notifier.py        # TelegramNotifier class
+└── api/                   # REST API layer (FastAPI)
+    ├── __init__.py        # create_app export
+    ├── app.py             # FastAPI app with endpoints
+    └── websocket.py       # WebSocket endpoint for live charting
 
-main.py                 # CLI entry point (train, predict, serve commands)
-tests/                  # Unit tests
-models/                 # Saved trained models (generated at runtime)
-logs/                   # Training run logs (generated at runtime)
-.cache/                 # Cached forex data Parquet files (generated at runtime)
+main.py                    # CLI entry point (train, predict, serve commands)
+tests/                     # Unit tests
+models/                    # Saved trained models (generated at runtime)
+logs/                      # Training run logs (generated at runtime)
+.cache/                    # Cached forex data Parquet files (generated at runtime)
 ```
 
 ---
