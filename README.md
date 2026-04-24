@@ -118,9 +118,9 @@ These are read by `IngestionConfig` (in `src/kael_trading_bot/config.py`). Set t
 
 | Class             | Module / File                                              | Purpose                                        |
 | ----------------- | ---------------------------------------------------------- | ---------------------------------------------- |
-| `IngestionConfig` | `kael_trading_bot.config` (or `src.kael_trading_bot.config`) | Forex pairs, date ranges, interval, cache dir  |
+| `IngestionConfig` | `kael_trading_bot.config` (or `src/kael_trading_bot.config`) | Forex pairs, date ranges, interval, cache dir  |
 | `FeatureConfig`   | `kael_trading_bot.features.pipeline`                        | Indicator windows, target horizons, NaN policy |
-| `PipelineConfig`  | `src.kael_trading_bot.training.pipeline`                    | Model type, split ratios, CV, persistence      |
+| `PipelineConfig`  | `kael_trading_bot.training.pipeline`                    | Model type, split ratios, CV, persistence      |
 | `ScannerConfig`   | `kael_trading_bot.config`                                  | Background scanner configuration               |
 
 Example — override defaults programmatically:
@@ -128,7 +128,7 @@ Example — override defaults programmatically:
 ```python
 from kael_trading_bot.config import IngestionConfig
 from kael_trading_bot.features.pipeline import FeatureConfig
-from src.kael_trading_bot.training.pipeline import PipelineConfig
+from kael_trading_bot.training.pipeline import PipelineConfig
 
 ingestion_cfg = IngestionConfig(
     pairs=("EURUSD=X", "GBPUSD=X"),
@@ -161,7 +161,7 @@ import numpy as np
 from kael_trading_bot.config import IngestionConfig
 from kael_trading_bot.ingestion import ForexDataFetcher
 from kael_trading_bot.features.pipeline import build_feature_matrix, FeatureConfig
-from src.kael_trading_bot.training.pipeline import PipelineConfig, TrainingPipeline
+from kael_trading_bot.training.pipeline import PipelineConfig, TrainingPipeline
 
 # 1. Fetch data
 ingestion_cfg = IngestionConfig(pairs=("EURUSD=X",))
@@ -229,7 +229,7 @@ The model version defaults to a timestamp string like `v20240115T103000`. Use `M
 Load a previously trained model and its metadata using `ModelPersistence`:
 
 ```python
-from src.kael_trading_bot.training.persistence import ModelPersistence
+from kael_trading_bot.training.persistence import ModelPersistence
 
 persistence = ModelPersistence(directory="models")
 model, metadata = persistence.load(
