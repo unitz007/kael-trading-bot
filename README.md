@@ -91,7 +91,14 @@ In addition to the Python API and CLI, the project provides a **REST API** (buil
 
    This also installs dev dependencies (`pytest`, `pytest-cov`, `ruff`, `mypy`).
 
-### Configuration
+#\n#### Scanner Configuration
+\nThe project can optionally run a scheduled trade setup scanner in the background. This scanner can be enabled or disabled via environment variables.
+\n| Variable            | Description                           | Default                |
+| ------------------- | ------------------------------------- | --------------------- |
+| `KAEL_SCANNER_ENABLED` | Whether the scanner is active.      | `True`                |
+| `KAEL_SCANNER_INTERVAL`  | How often (in minutes) a scan cycle runs. | `15`            |
+| `KAEL_SCANNER_DATA_DIR`   | Directory where scanned setups are persisted. | `.cache/trade_setups` |
+## Configuration
 
 The project is configured through **Python dataclasses** and **environment variables**. There is no YAML config file — all settings are set programmatically.
 
