@@ -1,400 +1,90 @@
-# Kael Trading Bot
+# Kael Trading Bot – ML-based Forex Trading Bot
 
-ML-based forex trading bot with technical feature engineering, model training pipeline, REST API, and web UI.
-
----
+Kael Trading Bot is a Python-based framework that ingests real‑time forex data,\nesengineers technical indicators, trains supervised classifiers, and exposes\npredictions via a lightweight REST API and web UI.
 
 ## Table of Contents
-
-- [Overview](#overview)
+- [Installation](#installation)
 - [Usage](#usage)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-  - [Configuration](#configuration)
-  - [Model Training](#model-training)
-  - [Using a Trained Model](#using-a-trained-model)
-  - [REST API](#rest-api)
-  - [Running Tests](#running-tests)
-  - [Docker Deployment](#docker-deployment)
-- [Project Structure](#project-structure)
-- [License](#license)
+- [Contribution Guidelines](#contribution-guidelines)
 
----
+## Installation
 
-## Overview
+### pip (recommended)
 
-Kael Trading Bot ingests forex pair data via Yahoo Finance, engineers technical features (SMA, EMA, RSI, MACD, Bollinger Bands, ATR, rolling stats, temporal features, and directional targets), trains ML classification models (XGBoost, LightGBM, Random Forest, Logistic Regression), evaluates them with both classification and trading-oriented metrics, and persists trained models for downstream use.
+```bash
+# clone
+git clone https://github.com/unitz007/kael-trading-bot.git
+cd kael-trading-bot
 
-In addition to the Python API and CLI, the project provides a **REST API** (built with FastAPI) that exposes bot capabilities as HTTP endpoints and a **Web UI** that lets you browse forex pairs, train models, and view predictions from the browser.
+# create & activate venv (recommended)
+python -m venv .venv
+source .venv/bin/activate
 
----
+# install dependencies
+pip install -r requirements.txt
+```
+
+### Docker Compose
+
+```bash
+docker compose up --build
+# Frontend UI will be served on http://localhost:3000
+# Backend/REST API will listen on http://localhost:5000
+```
+
+### Environment
+
+Set the following environment variables (or create a `.env` file):
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `KAEL_START_DATE` | Data start date (ISO) | `2020-01-01` |
+| `KAEL_END_DATE` | Data end date (ISO) | `2025-01-01` |
+| `KAEL_INTERVAL` | Data frequency (`1d`, `1h`, …) | `1d` |
+| `KAEL_CACHE_DIR` | Cached Pearson data dir | `.cache/forex_data` |
 
 ## Usage
 
-### Prerequisites
-
-| Requirement          | Details                                                        |
-| -------------------- | -------------------------------------------------------------- |
-| **Python**           | 3.11 or higher (see `pyproject.toml`)                          |
-| **Operating system** | Linux, macOS, or Windows (WSL recommended on Windows)          |
-| **Data source**      | Internet access to [Yahoo Finance](https://finance.yahoo.com) via the `yfinance` library — no API key required |
-| **External tools**   | Git (for cloning the repository)                               |
-
-> **Note:** Yahoo Finance provides free forex data without authentication. No API key is needed for the default data ingestion pipeline.
-
-### Installation
-
-1. **Clone the repository:**
-
-   ```bash
-   git clone https://github.com/unitz007/kael-trading-bot.git
-   cd kael-trading-bot
-   ```
-
-2. **(Recommended) Create and activate a virtual environment:**
-
-   ```bash
-   # Using venv
-   python -m venv .venv
-   source .venv/bin/activate   # Linux / macOS
-   .venv\Scripts\activate       # Windows
-
-   # Or using conda
-   conda create -n kael-bot python=3.11
-   conda activate kael-bot
-   ```
-
-3. **Install dependencies:**
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-   Key dependencies include:
-
-   - `numpy`, `pandas` — data handling
-   - `scikit-learn`, `xgboost`, `lightgbm` — ML model training
-   - `yfinance` — forex data ingestion from Yahoo Finance
-   - `ta` — technical analysis indicators
-   - `pyarrow` — Parquet I/O for data caching
-   - `joblib` — model persistence
-   - `matplotlib`, `seaborn` — visualisation
-   - `python-dotenv` — environment variable loading
-   - `fastapi` — REST API framework
-   - `uvicorn` — ASGI server for running the FastAPI application
-
-4. **(Optional) Install the package in editable mode for development:**
-
-   ```bash
-   pip install -e ".[dev]"
-   ```
-
-   This also installs dev dependencies (`pytest`, `pytest-cov`, `ruff`, `mypy`).
-
-### Configuration
-
-The project is configured through **Python dataclasses** and **environment variables**. There is no YAML config file — all settings are set programmatically.
-
-#### Environment Variables
-
-| Variable            | Description                              | Default                |
-| ------------------- | ---------------------------------------- | ---------------------- |
-| `KAEL_START_DATE`   | Data start date (ISO 8601, inclusive)    | `2020-01-01`           |
-| `KAEL_END_DATE`     | Data end date (ISO 8601, inclusive)      | `2025-01-01`           |
-| `KAEL_INTERVAL`     | Data frequency (`1d`, `1h`, etc.)        | `1d`                   |
-| `KAEL_CACHE_DIR`    | Directory for cached Parquet data files   | `.cache/forex_data`    |
-
-These are read by `IngestionConfig` (in `src/kael_trading_bot/config.py`). Set them in your shell or a `.env` file loaded with `python-dotenv`.
-
-#### Key Configuration Classes
-
-| Class             | Module / File                                              | Purpose                                        |
-| ----------------- | ---------------------------------------------------------- | ---------------------------------------------- |
-| `IngestionConfig` | `kael_trading_bot.config` (or `src.kael_trading_bot.config`) | Forex pairs, date ranges, interval, cache dir  |
-| `FeatureConfig`   | `kael_trading_bot.features.pipeline`                        | Indicator windows, target horizons, NaN policy |
-| `PipelineConfig`  | `src.kael_trading_bot.training.pipeline`                    | Model type, split ratios, CV, persistence      |
-
-Example — override defaults programmatically:
-
-```python
-from kael_trading_bot.config import IngestionConfig
-from kael_trading_bot.features.pipeline import FeatureConfig
-from src.kael_trading_bot.training.pipeline import PipelineConfig
-
-ingestion_cfg = IngestionConfig(
-    pairs=("EURUSD=X", "GBPUSD=X"),
-    start_date="2022-01-01",
-    end_date="2024-12-31",
-)
-
-feature_cfg = FeatureConfig(
-    sma_periods=(10, 20, 50),
-    rsi_period=14,
-    target_horizons=[1, 5],
-)
-
-pipeline_cfg = PipelineConfig(
-    model_type="xgboost",
-    model_name="eurusd_xgboost",
-    val_ratio=0.15,
-    test_ratio=0.15,
-    cross_validate=True,
-    n_cv_splits=5,
-)
-```
-
-### Model Training
-
-There is no dedicated CLI entry point — the training pipeline is used as a **Python API**. Create a training script (or run in a notebook/Jupyter session):
-
-```python
-import numpy as np
-from kael_trading_bot.config import IngestionConfig
-from kael_trading_bot.ingestion import ForexDataFetcher
-from kael_trading_bot.features.pipeline import build_feature_matrix, FeatureConfig
-from src.kael_trading_bot.training.pipeline import PipelineConfig, TrainingPipeline
-
-# 1. Fetch data
-ingestion_cfg = IngestionConfig(pairs=("EURUSD=X",))
-fetcher = ForexDataFetcher(ingestion_cfg)
-df = fetcher.get("EURUSD=X")
-
-# 2. Build features
-feature_cfg = FeatureConfig()
-features_df = build_feature_matrix(df, config=feature_cfg)
-
-# 3. Prepare X, y
-target_col = "target_direction_1"  # 1-period ahead directional target
-feature_cols = [c for c in features_df.columns if c.startswith(("sma_", "ema_", "rsi_", "macd_", "bb_", "atr_", "rolling_", "hour_", "dayofweek_"))]
-X = features_df[feature_cols].values
-y = features_df[target_col].values
-
-# 4. Train
-pipeline_cfg = PipelineConfig(
-    model_type="xgboost",
-    model_name="eurusd_xgboost",
-)
-pipeline = TrainingPipeline(pipeline_cfg)
-result = pipeline.run(X, y, feature_names=feature_cols)
-
-print(f"Test F1: {result.best_test_f1:.4f}")
-print(f"Model saved to: {result.saved_path}")
-```
-
-#### What the pipeline does
-
-1. **Data ingestion** — fetches forex OHLCV data via Yahoo Finance and caches it locally as Parquet files in `.cache/forex_data/`
-2. **Feature engineering** — computes technical indicators (SMA, EMA, RSI, MACD, Bollinger Bands, ATR), rolling window statistics, time-based features, and target labels (future returns and directional signals)
-3. **Time-aware splitting** — splits data into train (70%), validation (15%), and test (15%) sets chronologically to prevent future leakage
-4. **(Optional) Cross-validation** — performs time-series cross-validation with configurable number of folds
-5. **Model training** — trains the selected model type with default or custom hyperparameters
-6. **Evaluation** — computes classification metrics (accuracy, precision, recall, F1, ROC-AUC) and trading metrics (hit rate, avg return per trade, Sharpe ratio, max drawdown)
-7. **Persistence** — saves the trained model as `model.joblib` with a `metadata.json` sidecar
-8. **Logging** — appends a structured JSON-lines record to `logs/training_runs.jsonl`
-
-#### Trained model output
-
-Models are saved to the `models/` directory by default, organised as:
-
-```
-models/
-└── <model_name>/
-    └── <model_version>/
-        ├── model.joblib       # Serialised model binary
-        └── metadata.json      # Training config, metrics, timestamp
-```
-
-The model version defaults to a timestamp string like `v20240115T103000`. Use `ModelPersistence.list_models()` and `ModelPersistence.list_versions(name)` to discover saved models.
-
-#### Available Model Types
-
-| Model Type            | Enum Value              | Key Hyperparameters (defaults)                          |
-| --------------------- | ----------------------- | ------------------------------------------------------- |
-| XGBoost               | `"xgboost"`             | `n_estimators=200`, `max_depth=6`, `learning_rate=0.05` |
-| LightGBM              | `"lightgbm"`            | `n_estimators=200`, `max_depth=6`, `learning_rate=0.05` |
-| Random Forest         | `"random_forest"`       | `n_estimators=200`, `max_depth=10`                      |
-| Logistic Regression   | `"logistic_regression"` | `max_iter=1000`, `C=1.0`                                |
-
-### Using a Trained Model
-
-Load a previously trained model and its metadata using `ModelPersistence`:
-
-```python
-from src.kael_trading_bot.training.persistence import ModelPersistence
-
-persistence = ModelPersistence(directory="models")
-model, metadata = persistence.load(
-    model_name="eurusd_xgboost",
-    model_version="v20240115T103000",  # or use list_versions() to find one
-)
-
-print(f"Model type: {metadata.model_type}")
-print(f"Trained at: {metadata.trained_at}")
-print(f"Test metrics: {metadata.metrics.get('test')}")
-
-# Generate predictions
-predictions = model.predict(X_new)
-probabilities = model.predict_proba(X_new)[:, 1]  # probability of positive class
-```
-
-> ⚠️ **Disclaimer:** This bot is for educational and research purposes only. Forex trading involves significant risk. Always use a demo/paper trading account and never risk capital you cannot afford to lose.
-
-### REST API
-
-The project ships a **FastAPI-based** REST API that exposes bot capabilities as HTTP endpoints. All API routes are prefixed with `/api/v1/`.
-
-#### Starting the API server
+Start the API and UI:
 
 ```bash
 python main.py serve
-# or specify a custom port
-python main.py serve --port 5000
 ```
 
-The server starts on `http://0.0.0.0:5000` by default (powered by **uvicorn**).
-
-Alternatively, you can start the server directly with uvicorn:
+Alternatively, with uvicorn directly:
 
 ```bash
 uvicorn kael_trading_bot.api:create_app --factory --host 0.0.0.0 --port 5000
 ```
 
-#### Endpoints
-
-| Method | Endpoint | Description |
-| ------ | -------- | ----------- |
-| `GET` | `/api/v1/pairs` | List all available/supported forex pairs |
-| `GET` | `/api/v1/pairs/<pair>/history` | Retrieve historical OHLCV price data for a given pair |
-| `POST` | `/api/v1/pairs/<pair>/train` | Trigger model training for a given pair |
-| `GET` | `/api/v1/pairs/<pair>/predict` | Get prediction results using the latest trained model for a pair |
-| `GET` | `/api/v1/pairs/<pair>/forecast` | Get future price forecast with confidence bands for a pair |
-| `GET` | `/api/v1/pairs/<pair>/trade-setup` | Generate an actionable trade setup (entry, stop-loss, take-profit) for a pair |
-| `GET` | `/api/v1/models` | List all trained models with their metadata and metrics |
-
-**Pairs** — `GET /api/v1/pairs`
-
-Returns the configured list of supported forex pairs with their count.
-
-**Historical Data** — `GET /api/v1/pairs/<pair>/history`
-
-Returns OHLCV price data for a pair (e.g. `EURUSD` or `EURUSD=X`). Responds with `404` if the pair is not supported or data is unavailable.
-
-**Training** — `POST /api/v1/pairs/<pair>/train`
-
-Runs the full training pipeline (ingestion → feature engineering → model training) for the specified pair. Returns training status, test metrics, and the saved model path. Training is synchronous — the response is returned once training completes.
-
-**Predictions** — `GET /api/v1/pairs/<pair>/predict`
-
-Loads the latest trained model for a pair, fetches current data, and returns directional predictions (UP/DOWN) with confidence probabilities. Responds with `404` if no trained model exists for the pair.
-
-**Models** — `GET /api/v1/models`
-
-Lists all saved models across all pairs with version information, model type, training timestamp, metrics, and feature names.
-
-**Forecast** — `GET /api/v1/pairs/<pair>/forecast?horizon=30`
-
-Returns a future price forecast for a pair using the latest trained model. Includes predicted prices, upper/lower confidence bands, directional signal, and historical context data. The `horizon` parameter controls the number of future periods (1–365).
-
-**Trade Setup** — `GET /api/v1/pairs/<pair>/trade-setup`
-
-Generates an actionable trade setup for a pair including entry price, stop loss, take profit, model confidence, and trade direction (buy/sell/hold). Requires a trained model for the pair.
-
-### Web UI
-
-The project includes a browser-based Web UI served by the FastAPI application. It provides server-rendered HTML pages with vanilla JavaScript for interactivity.
-
-#### Starting the Web UI
+Trigger a training job for a pair (e.g. `EURUSD=X`):
 
 ```bash
-python main.py serve
+curl -X POST http://localhost:5000/api/v1/pairs/EURUSD%3DX/train
 ```
 
-This starts the API server (which also serves the Web UI) on `http://localhost:5000`. Open this URL in your browser to access the interface.
-
-#### Pages
-
-**Forex Pairs** (`/pairs`)
-
-Lists all configured forex pairs in a responsive table. Clicking a pair opens its detail page showing historical price data — a line chart (using Chart.js) for the selected period (30 / 90 / 180 / 365 days) and an OHLCV data table below.
-
-**Model Training** (`/training`)
-
-Allows you to trigger model training from the browser. Select a forex pair, start a training job, and monitor its status in real time. Completed jobs display evaluation metrics (accuracy, precision, recall, F1, ROC-AUC) and the model version that was saved.
-
-**Predictions** (`/predictions`)
-
-Displays ML prediction results for a selected forex pair. Shows the predicted direction (UP or DOWN), confidence score, the model version used, when the model was trained, and the timestamp the prediction was generated. A model status summary indicates which pairs have a trained model available.
-
----
-
-### Running Tests
-
-The project uses `pytest` for testing. Tests are located in the `tests/` directory:
+Prediction:
 
 ```bash
-# Run all tests
-pytest
-
-# Run tests for a specific module
-pytest tests/test_training_pipeline.py
-
-# Run with coverage report
-pytest --cov=src/kael_trading_bot
+curl http://localhost:5000/api/v1/pairs/EURUSD%3DX/predict
 ```
 
-### Docker Deployment
+## Contribution Guidelines
 
-The project includes Docker artifacts for containerised deployment. See [DOCKER.md](DOCKER.md) for full details.
+1. **Fork** the repository and clone your fork.
+2. Create a branch following the convention: `feat/<short-description>` or `fix/<short-description>`.
+3. Make your changes, run `ruff check` and `mypy` locally to satisfy style.
+4. Add tests for new behavior.
+5. Open a pull request. The CI will run `pytest`, `ruff`, `mypy`, and `build`. If all checks pass, a reviewer will merge.
 
-```bash
-# Build and start the full stack (backend + frontend)
-docker compose up --build
-```
+### Repository Conventions
 
-| Service  | URL                       |
-| -------- | ------------------------- |
-| Frontend | http://localhost:3000     |
-| Backend  | http://localhost:5000     |
-
----
-
-## Project Structure
-
-```
-src/kael_trading_bot/
-├── __init__.py
-├── config.py           # IngestionConfig (forex pairs, dates, caching)
-├── ingestion.py        # ForexDataFetcher (Yahoo Finance OHLCV)
-├── features/           # Technical feature engineering
-│   ├── __init__.py
-│   ├── pipeline.py     # build_feature_matrix, FeatureConfig
-│   ├── indicators.py   # SMA, EMA, RSI, MACD, BB, ATR
-│   ├── temporal.py     # Time-based features, rolling stats
-│   └── targets.py      # Future returns, directional targets
-├── training/           # ML model training pipeline
-│   ├── __init__.py
-│   ├── pipeline.py     # TrainingPipeline, PipelineConfig
-│   ├── models.py       # ModelRegistry, ModelType (XGBoost, LightGBM, RF, LR)
-│   ├── splitting.py    # TimeSeriesSplitter (chronological split)
-│   ├── evaluation.py   # Classification + trading metrics
-│   ├── persistence.py  # ModelPersistence (save/load with metadata)
-│   └── logging.py      # TrainingLogger (JSON-lines run history)
-├── trade_setup/        # Trade setup generation & backtesting
-│   ├── __init__.py
-│   └── backtest.py    # Backtesting utilities
-└── api/                # REST API layer (FastAPI)
-    ├── __init__.py     # create_app export
-    └── app.py          # FastAPI app with /api/v1/ endpoints (pairs, history, train, predict, forecast, trade-setup, models)
-
-main.py                 # CLI entry point (train, predict, serve commands)
-tests/                  # Unit tests
-models/                 # Saved trained models (generated at runtime)
-logs/                   # Training run logs (generated at runtime)
-.cache/                 # Cached forex data Parquet files (generated at runtime)
-```
-
----
+- Python source lives in `src/kael_trading_bot`.
+- Tests are under `tests/`.
+- Documentation is in `README.md` only; external docs are out of scope.
+- Models are persisted in `models/`.
+- Docker build is defined by `Dockerfile` and `docker-compose.yml`.
 
 ## License
 
-See [LICENSE](LICENSE) for details.
+MIT. See [LICENSE](LICENSE) for details.
