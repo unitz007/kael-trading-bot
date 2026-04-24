@@ -1,4 +1,6 @@
 # Kael Trading Bot
+**Version:** v0.1.0 (Commit: <last_commit_hash>)
+
 
 ML-based forex trading bot with technical feature engineering, model training pipeline, REST API, and web UI.
 
