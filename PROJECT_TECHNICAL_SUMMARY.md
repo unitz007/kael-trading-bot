@@ -23,7 +23,7 @@
 The project is containerized using Docker:
 
 - **Dockerfile**: Defines the container image for the service
-- **docker-compose.yml`: Orchestrates multi-container deployments
+- **docker-compose.yml**: Orchestrates multi-container deployments
   - Exposes backend on port 5000
   - Exposes frontend on port 3000
 - **Environment Variables**: Configurable via `.env`
