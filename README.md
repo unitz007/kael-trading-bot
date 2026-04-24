@@ -259,7 +259,18 @@ Alternatively, you can start the server directly with uvicorn:
 uvicorn kael_trading_bot.api:create_app --factory --host 0.0.0.0 --port 5000
 ```
 
-#### Endpoints
+#- `GET /api/v1/pairs/{pair}/trade-setup`
+    * Generate an actionable trade setup (entry price, stop‑loss, take‑profit, model confidence, and trade direction)
+- `GET /api/v1/trade-setups`
+    * List the most recent scanned trade setups for all pairs (optionally filtered by timeframe)
+    * Returns a JSON array with trades details and timestamps
+- `GET /api/v1/accuracy/predictions`
+    * Paginated list of individual predictions with accuracy flags
+- `GET /api/v1/accuracy/summary`
+    * Aggregated accuracy metrics per pair/ timeframe
+- `GET /api/v1/accuracy/trend`
+    * Accuracy trend data grouped by day or week
+### Endpoints
 
 | Method | Endpoint | Description |
 | ------ | -------- | ----------- |
